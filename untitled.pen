@@ -1,0 +1,4587 @@
+{
+  "version": "2.14",
+  "children": [
+    {
+      "type": "frame",
+      "id": "cblCd",
+      "x": 880,
+      "y": 0,
+      "name": "AI Agent Memory Workbench",
+      "clip": true,
+      "width": 1440,
+      "height": 1024,
+      "fill": "$surface",
+      "children": [
+        {
+          "type": "frame",
+          "id": "Q6PfdL",
+          "name": "Agent Configuration Sidebar",
+          "width": 300,
+          "height": "fill_container",
+          "fill": "$surface",
+          "stroke": "$border",
+          "strokeWidth": {
+            "right": 1
+          },
+          "layout": "vertical",
+          "gap": 24,
+          "padding": [
+            28,
+            24,
+            24,
+            24
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "rLJcA",
+              "name": "Agent Header",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "CxxrM",
+                  "name": "Agent Avatar",
+                  "width": 44,
+                  "height": 44,
+                  "fill": "$blue-soft",
+                  "cornerRadius": 22,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "BClsb",
+                      "x": 11,
+                      "y": 11,
+                      "name": "Sparkles Icon",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "sparkles",
+                      "library": "lucide",
+                      "fill": "$blue"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "vAknc",
+                  "name": "Agent Identity Text",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "DFoD1",
+                      "name": "Agent Name",
+                      "fill": "$text-primary",
+                      "content": "Memory Agent",
+                      "fontFamily": "$font",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "a5inIq",
+                      "name": "Agent Status Row",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "cYzPE",
+                          "name": "Online Dot",
+                          "fill": "$green",
+                          "width": 7,
+                          "height": 7
+                        },
+                        {
+                          "type": "text",
+                          "id": "aRRig",
+                          "name": "Agent Status",
+                          "fill": "$text-secondary",
+                          "content": "长期记忆已启用",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "AAQGl",
+              "name": "Desktop Sidebar Language Setting",
+              "width": "fill_container",
+              "fill": "#F8FAFC",
+              "cornerRadius": 14,
+              "stroke": "$border",
+              "gap": 12,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ATKqx",
+                  "name": "Desktop Sidebar Language Copy",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 3,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "MOvyQ",
+                      "name": "Desktop Sidebar Language Title",
+                      "fill": "$text-primary",
+                      "content": "界面语言",
+                      "fontFamily": "$font",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "R2Cdh",
+                      "name": "Desktop Sidebar Language Hint",
+                      "fill": "$text-secondary",
+                      "content": "中文 / English",
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "dkTqi",
+                  "name": "Desktop Sidebar Language Switch",
+                  "width": 86,
+                  "height": 34,
+                  "fill": "$surface-muted",
+                  "cornerRadius": 17,
+                  "stroke": "$border",
+                  "gap": 2,
+                  "padding": 3,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SUJ8q",
+                      "name": "Desktop Sidebar Chinese Active",
+                      "width": "fill_container",
+                      "height": 28,
+                      "fill": "$blue",
+                      "cornerRadius": 14,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "BAYYG",
+                          "name": "Desktop Sidebar Chinese Label",
+                          "fill": "#FFFFFF",
+                          "content": "中",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "p92a0",
+                      "name": "Desktop Sidebar English Option",
+                      "width": "fill_container",
+                      "height": 28,
+                      "fill": "#00000000",
+                      "cornerRadius": 14,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "dPjOs",
+                          "name": "Desktop Sidebar English Label",
+                          "fill": "$text-secondary",
+                          "content": "EN",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wkX82",
+              "name": "Role Settings Section",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "RKqIZ",
+                  "name": "Role Settings Label",
+                  "fill": "$text-tertiary",
+                  "content": "角色设定",
+                  "fontFamily": "$font",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "c0HPB",
+                  "name": "Role Prompt Box",
+                  "width": "fill_container",
+                  "fill": "$surface-muted",
+                  "cornerRadius": 14,
+                  "stroke": "$border",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "a7P1X",
+                      "name": "Role Title",
+                      "fill": "$text-primary",
+                      "content": "本地研究助理",
+                      "fontFamily": "$font",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "pQOpP",
+                      "name": "Role Description",
+                      "fill": "$text-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "保持克制、追问关键上下文，并把稳定事实整理为可追溯的长期记忆。",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "lgicf",
+              "name": "Behavior Mode Section",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "AKulh",
+                  "name": "Behavior Mode Label",
+                  "fill": "$text-tertiary",
+                  "content": "行为模式",
+                  "fontFamily": "$font",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "mpPnl",
+                  "name": "主动追问 Row",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "IwZLT",
+                      "name": "主动追问 Copy",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 3,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "rIgIO",
+                          "name": "主动追问",
+                          "fill": "$text-primary",
+                          "content": "主动追问",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "KsX4w",
+                          "name": "主动追问 Hint",
+                          "fill": "$text-secondary",
+                          "content": "缺少信息时先确认",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "IV8IX",
+                      "name": "主动追问 Switch",
+                      "width": 42,
+                      "height": 24,
+                      "fill": "$blue",
+                      "cornerRadius": 12,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "c3Z8gz",
+                          "x": 20,
+                          "y": 3,
+                          "name": "主动追问 Knob",
+                          "fill": "$surface",
+                          "width": 18,
+                          "height": 18
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "HFE6C",
+                  "name": "记录记忆 Row",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Mr6pI",
+                      "name": "记录记忆 Copy",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 3,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "I0MpM0",
+                          "name": "记录记忆",
+                          "fill": "$text-primary",
+                          "content": "记录记忆",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "FIMB2",
+                          "name": "记录记忆 Hint",
+                          "fill": "$text-secondary",
+                          "content": "沉淀稳定事实",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "MoXIH",
+                      "name": "记录记忆 Switch",
+                      "width": 42,
+                      "height": 24,
+                      "fill": "$blue",
+                      "cornerRadius": 12,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "AOie5",
+                          "x": 20,
+                          "y": 3,
+                          "name": "记录记忆 Knob",
+                          "fill": "$surface",
+                          "width": 18,
+                          "height": 18
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "YM21o",
+                  "name": "严格遵守角色 Row",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "a8ck7",
+                      "name": "严格遵守角色 Copy",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 3,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "ksL12",
+                          "name": "严格遵守角色",
+                          "fill": "$text-primary",
+                          "content": "严格遵守角色",
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "tVb7e",
+                          "name": "严格遵守角色 Hint",
+                          "fill": "$text-secondary",
+                          "content": "限制越界输出",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hTGgM",
+                      "name": "严格遵守角色 Switch",
+                      "width": 42,
+                      "height": 24,
+                      "fill": "#E4E7EC",
+                      "cornerRadius": 12,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "LM4za",
+                          "x": 3,
+                          "y": 3,
+                          "name": "严格遵守角色 Knob",
+                          "fill": "$surface",
+                          "width": 18,
+                          "height": 18
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wt2oo",
+              "name": "Temperature Section",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "HHK9R",
+                  "name": "Temperature Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "XJm3P",
+                      "name": "Temperature Label",
+                      "fill": "$text-tertiary",
+                      "content": "对话温度",
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "agWBY",
+                      "name": "Temperature Value",
+                      "fill": "$blue",
+                      "content": "0.62",
+                      "fontFamily": "$mono",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "y3EaZ",
+                  "name": "Temperature Slider",
+                  "width": "fill_container",
+                  "height": 28,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 2,
+                      "id": "I49JnY",
+                      "x": 0,
+                      "y": 12,
+                      "name": "Slider Track",
+                      "fill": "#E4E7EC",
+                      "width": 252,
+                      "height": 4
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 2,
+                      "id": "zlY7n",
+                      "x": 0,
+                      "y": 12,
+                      "name": "Slider Active Track",
+                      "fill": "$blue",
+                      "width": 152,
+                      "height": 4
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "G5qnA",
+                      "x": 144,
+                      "y": 6,
+                      "name": "Slider Thumb",
+                      "fill": "$surface",
+                      "width": 16,
+                      "height": 16,
+                      "stroke": "$blue",
+                      "strokeWidth": 3
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "YBqNu",
+                  "name": "Temperature Scale",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Qx3Cg",
+                      "name": "Temperature 稳定",
+                      "fill": "$text-secondary",
+                      "content": "稳定",
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "MTbrZ",
+                      "name": "Temperature 平衡",
+                      "fill": "$text-secondary",
+                      "content": "平衡",
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "XtMpF",
+                      "name": "Temperature 创造",
+                      "fill": "$text-secondary",
+                      "content": "创造",
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CKc99",
+              "name": "Model Configuration Summary",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "L7aGzt",
+                  "name": "Model Config Label",
+                  "fill": "$text-tertiary",
+                  "content": "模型配置",
+                  "fontFamily": "$font",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "r6IwsH",
+                  "name": "Model Status Box",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 14,
+                  "stroke": "$border",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "s1j5U",
+                      "name": "模型 Row",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "G9ZFDn",
+                          "name": "模型 Key",
+                          "fill": "$text-secondary",
+                          "content": "模型",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "QGa1N",
+                          "name": "模型 Value",
+                          "fill": "$text-primary",
+                          "content": "gpt-4.1-mini",
+                          "fontFamily": "$mono",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "vIUMw",
+                      "name": "API Row",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "oBvTc",
+                          "name": "API Key",
+                          "fill": "$text-secondary",
+                          "content": "API",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "pk8OE",
+                          "name": "API Value",
+                          "fill": "$green",
+                          "content": "已连接",
+                          "fontFamily": "$mono",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ANkTo",
+                      "name": "上下文 Row",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "hZTzy",
+                          "name": "上下文 Key",
+                          "fill": "$text-secondary",
+                          "content": "上下文",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Gy5zh",
+                          "name": "上下文 Value",
+                          "fill": "$text-primary",
+                          "content": "128K",
+                          "fontFamily": "$mono",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pwBkW",
+              "name": "Memory Routing Note",
+              "width": "fill_container",
+              "fill": "#F8FAFC",
+              "cornerRadius": 12,
+              "stroke": "$border",
+              "gap": 8,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "D9f4b",
+                  "name": "Memory Routing Icon",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "database",
+                  "library": "lucide",
+                  "fill": "$blue"
+                },
+                {
+                  "type": "text",
+                  "id": "ZI0Tq",
+                  "name": "Memory Routing Text",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "记忆写入前会先进入候选区，确认后同步到 memory.md。",
+                  "lineHeight": 1.3,
+                  "fontFamily": "$font",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "mqV1Q",
+          "name": "Main Chat Workspace",
+          "width": 800,
+          "height": "fill_container",
+          "fill": "$surface",
+          "stroke": "$border",
+          "strokeWidth": {
+            "right": 1
+          },
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "h0074Q",
+              "name": "Chat Header",
+              "width": "fill_container",
+              "height": 76,
+              "fill": "$surface",
+              "stroke": "$border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "padding": [
+                18,
+                28
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "z5y9t2",
+                  "name": "Conversation Title Block",
+                  "layout": "vertical",
+                  "gap": 5,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "rQZf5",
+                      "name": "Conversation Title",
+                      "fill": "$text-primary",
+                      "content": "产品策略讨论",
+                      "fontFamily": "$font",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "T5KW3",
+                      "name": "Conversation Agent State",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "wA9Dt",
+                          "name": "Thinking Status Dot",
+                          "fill": "$blue",
+                          "width": 7,
+                          "height": 7
+                        },
+                        {
+                          "type": "text",
+                          "id": "pUk7i",
+                          "name": "Conversation State Text",
+                          "fill": "$text-secondary",
+                          "content": "Memory Agent · 已加载 8 条长期记忆 · 可调用工具",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "MvgaF",
+                  "name": "Header Actions",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "C248V",
+                      "name": "Search Button",
+                      "width": 34,
+                      "height": 34,
+                      "fill": "$surface-muted",
+                      "cornerRadius": 17,
+                      "stroke": "$border",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "SWQlY",
+                          "x": 8,
+                          "y": 8,
+                          "name": "Search Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "search",
+                          "library": "lucide",
+                          "fill": "$text-secondary"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "x9rg4t",
+                      "name": "Settings Button",
+                      "width": 34,
+                      "height": 34,
+                      "fill": "$surface-muted",
+                      "cornerRadius": 17,
+                      "stroke": "$border",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "AlsBg",
+                          "x": 8,
+                          "y": 8,
+                          "name": "Settings Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "settings-2",
+                          "library": "lucide",
+                          "fill": "$text-secondary"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "U84MI",
+                      "name": "Desktop Language Switch",
+                      "width": 92,
+                      "height": 34,
+                      "fill": "$surface-muted",
+                      "cornerRadius": 17,
+                      "stroke": "$border",
+                      "gap": 2,
+                      "padding": 3,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "zLZ3L",
+                          "name": "Desktop Chinese Active",
+                          "width": "fill_container",
+                          "height": 28,
+                          "fill": "$blue",
+                          "cornerRadius": 14,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "YEb9Q",
+                              "name": "Desktop Chinese Label",
+                              "fill": "#FFFFFF",
+                              "content": "中",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "U9XMM",
+                          "name": "Desktop English Option",
+                          "width": "fill_container",
+                          "height": 28,
+                          "fill": "#00000000",
+                          "cornerRadius": 14,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "EHGCn",
+                              "name": "Desktop English Label",
+                              "fill": "$text-secondary",
+                              "content": "EN",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "UjpmN",
+              "name": "Chat Message Stream",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "layout": "vertical",
+              "gap": 26,
+              "padding": [
+                36,
+                72,
+                24,
+                72
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Oce2P",
+                  "name": "Memory Context Strip",
+                  "width": "fill_container",
+                  "fill": "#F8FAFF",
+                  "cornerRadius": 14,
+                  "stroke": "#DBE7FF",
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "V47HT5",
+                      "name": "Context Strip Icon",
+                      "width": 20,
+                      "height": 20,
+                      "icon": "brain",
+                      "library": "lucide",
+                      "fill": "$blue"
+                    },
+                    {
+                      "type": "text",
+                      "id": "JMVf5",
+                      "name": "Context Strip Text",
+                      "fill": "$text-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "已结合你的项目偏好、近期讨论和 memory.md 片段回答；候选记忆会在右侧等待确认。",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "TJOjw",
+                  "name": "AI Greeting Row",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "iOXQN",
+                      "name": "AI Greeting Avatar",
+                      "width": 34,
+                      "height": 34,
+                      "fill": "#EFF4FF",
+                      "cornerRadius": 17,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "hPytY",
+                          "x": 8,
+                          "y": 8,
+                          "name": "AI Greeting Bot Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "bot",
+                          "library": "lucide",
+                          "fill": "$blue"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "rV3xH",
+                      "name": "AI Greeting Column",
+                      "width": 520,
+                      "layout": "vertical",
+                      "gap": 7,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "J5pBJR",
+                          "name": "AI Greeting Bubble",
+                          "width": "fill_container",
+                          "fill": "$surface-soft",
+                          "cornerRadius": [
+                            4,
+                            18,
+                            18,
+                            18
+                          ],
+                          "layout": "vertical",
+                          "gap": 8,
+                          "padding": [
+                            14,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "ZAkxK",
+                              "name": "AI Greeting Text",
+                              "fill": "$text-primary",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "我会先按你的长期偏好做一个保守版本：先确认约束，再给出可执行方案。当前记忆显示你更关注结构清晰、可验证结果和本地文件可追溯。",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font",
+                              "fontSize": 15,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "D6YyF",
+                          "name": "AI Greeting Meta",
+                          "fill": "$text-tertiary",
+                          "content": "引用 3 条记忆 · 14:26",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "YbDBk",
+                  "name": "User Request Row",
+                  "width": "fill_container",
+                  "justifyContent": "end",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "AT4AW",
+                      "name": "User Request Bubble",
+                      "width": 500,
+                      "fill": "$blue-soft",
+                      "cornerRadius": [
+                        18,
+                        4,
+                        18,
+                        18
+                      ],
+                      "layout": "vertical",
+                      "padding": [
+                        14,
+                        16
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "yZbLD",
+                          "name": "User Request Text",
+                          "fill": "#1E3A8A",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "这次帮我判断一下智能体该不该自动写入 memory.md，别把临时想法也存进去。",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font",
+                          "fontSize": 15,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "rilBM",
+                  "name": "AI Response Row",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "fHXwR",
+                      "name": "AI Response Avatar",
+                      "width": 34,
+                      "height": 34,
+                      "fill": "#EFF4FF",
+                      "cornerRadius": 17,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "C4asV",
+                          "x": 8,
+                          "y": 8,
+                          "name": "AI Response Bot Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "bot",
+                          "library": "lucide",
+                          "fill": "$blue"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "vqpve",
+                      "name": "AI Response Column",
+                      "width": 520,
+                      "layout": "vertical",
+                      "gap": 7,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "CfvEB",
+                          "name": "AI Response Bubble",
+                          "width": "fill_container",
+                          "fill": "$surface-soft",
+                          "cornerRadius": [
+                            4,
+                            18,
+                            18,
+                            18
+                          ],
+                          "layout": "vertical",
+                          "gap": 8,
+                          "padding": [
+                            14,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "k0z8j",
+                              "name": "AI Response Text",
+                              "fill": "$text-primary",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "建议采用候选区审核：稳定事实、长期偏好、项目固定约束可以写入；临时判断、一次性任务、未经确认的猜测只进入本轮上下文。右侧我已经标出 2 条候选记忆，其中 1 条需要你确认。",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font",
+                              "fontSize": 15,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "yvsjv",
+                          "name": "AI Response Meta",
+                          "fill": "$text-tertiary",
+                          "content": "生成候选记忆 2 条 · 可整理",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "D2oj00",
+              "name": "Composer Dock",
+              "width": "fill_container",
+              "fill": "$surface",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": [
+                0,
+                72,
+                32,
+                72
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Y1XM4",
+                  "name": "Quick Action Pills",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "DByDU",
+                      "name": "深度思考 Pill",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 18,
+                      "stroke": "$border",
+                      "gap": 7,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "AuQdB",
+                          "name": "深度思考 Icon",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "brain-circuit",
+                          "library": "lucide",
+                          "fill": "$text-secondary"
+                        },
+                        {
+                          "type": "text",
+                          "id": "nivuJ",
+                          "name": "深度思考 Label",
+                          "fill": "$text-secondary",
+                          "content": "深度思考",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Chdvm",
+                      "name": "整理记忆 Pill",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 18,
+                      "stroke": "$border",
+                      "gap": 7,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "y1ZlD",
+                          "name": "整理记忆 Icon",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "archive",
+                          "library": "lucide",
+                          "fill": "$blue"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Xe5Vr",
+                          "name": "整理记忆 Label",
+                          "fill": "$blue",
+                          "content": "整理记忆",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "B2XUm",
+                      "name": "生成摘要 Pill",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 18,
+                      "stroke": "$border",
+                      "gap": 7,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "u2OlT",
+                          "name": "生成摘要 Icon",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "file-text",
+                          "library": "lucide",
+                          "fill": "$text-secondary"
+                        },
+                        {
+                          "type": "text",
+                          "id": "zsv30",
+                          "name": "生成摘要 Label",
+                          "fill": "$text-secondary",
+                          "content": "生成摘要",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Nv9m7",
+                      "name": "调用工具 Pill",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 18,
+                      "stroke": "$border",
+                      "gap": 7,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "qh7hs",
+                          "name": "调用工具 Icon",
+                          "width": 15,
+                          "height": 15,
+                          "icon": "wrench",
+                          "library": "lucide",
+                          "fill": "$text-secondary"
+                        },
+                        {
+                          "type": "text",
+                          "id": "SDHqX",
+                          "name": "调用工具 Label",
+                          "fill": "$text-secondary",
+                          "content": "调用工具",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "uJHPI",
+                  "name": "Floating Message Input",
+                  "width": "fill_container",
+                  "height": 72,
+                  "fill": "$surface",
+                  "cornerRadius": 28,
+                  "stroke": "$border",
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "#10182814",
+                    "offset": {
+                      "x": 0,
+                      "y": 8
+                    },
+                    "blur": 24
+                  },
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "OnMJg",
+                      "name": "Input Left Tools",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "IiRCJ",
+                          "name": "Attach Tool",
+                          "width": 36,
+                          "height": 36,
+                          "fill": "$surface-muted",
+                          "cornerRadius": 18,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "rTdhl",
+                              "x": 9,
+                              "y": 9,
+                              "name": "Attach Tool Icon",
+                              "width": 18,
+                              "height": 18,
+                              "icon": "paperclip",
+                              "library": "lucide",
+                              "fill": "$text-secondary"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "z0tSe",
+                          "name": "Voice Tool",
+                          "width": 36,
+                          "height": 36,
+                          "fill": "$surface-muted",
+                          "cornerRadius": 18,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "F8y63",
+                              "x": 9,
+                              "y": 9,
+                              "name": "Voice Tool Icon",
+                              "width": 18,
+                              "height": 18,
+                              "icon": "mic",
+                              "library": "lucide",
+                              "fill": "$text-secondary"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "gHB1t",
+                      "name": "Input Placeholder",
+                      "fill": "$text-tertiary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "发消息，或让智能体记住一件事...",
+                      "fontFamily": "$font",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "I0Rto",
+                      "name": "Send Button",
+                      "width": 42,
+                      "height": 42,
+                      "fill": "$blue",
+                      "cornerRadius": 21,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "SIG5B",
+                          "x": 11,
+                          "y": 11,
+                          "name": "Send Icon",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "send-horizontal",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "CK4or",
+          "name": "Long-term Memory Panel",
+          "clip": true,
+          "width": 340,
+          "height": "fill_container",
+          "fill": "#FBFCFE",
+          "layout": "vertical",
+          "gap": 18,
+          "padding": [
+            24,
+            22,
+            22,
+            22
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "JzDi5",
+              "name": "Panel Header",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "fYuzB",
+                  "name": "Title Row",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "VtedP",
+                      "name": "Title Copy",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "u8PcL",
+                          "name": "Eyebrow",
+                          "fill": "#667085",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "LONG-TERM MEMORY",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "z7OcJr",
+                          "name": "Title",
+                          "fill": "#1F2328",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Memory Context",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 22,
+                          "fontWeight": "650"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "kGugx",
+                      "name": "Sync Status",
+                      "fill": "#EAF8F1",
+                      "cornerRadius": 6,
+                      "stroke": "#EAF8F1",
+                      "strokeWidth": 1,
+                      "padding": [
+                        5,
+                        8
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "TUWCh",
+                          "name": "Label",
+                          "fill": "#20A36A",
+                          "content": "Live",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "650"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "nbMid",
+                  "name": "Memory Summary",
+                  "width": "fill_container",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E5E7EB",
+                  "strokeWidth": 1,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "#10182812",
+                    "offset": {
+                      "x": 0,
+                      "y": 1
+                    },
+                    "blur": 8
+                  },
+                  "gap": 8,
+                  "padding": 10,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "WkB5h",
+                      "name": "Loaded Metric",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "HEtTS",
+                          "name": "Metric Value",
+                          "fill": "#1F2328",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "18",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 18,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "CF4nC",
+                          "name": "Metric Label",
+                          "fill": "#667085",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Loaded",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "EsO4Q",
+                      "name": "Candidates Metric",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "c4lg6X",
+                          "name": "Metric Value",
+                          "fill": "#1F2328",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "5",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 18,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "mDw2u",
+                          "name": "Metric Label",
+                          "fill": "#667085",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Candidates",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "kAxDl",
+                      "name": "Edited Metric",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "wJ4uf",
+                          "name": "Metric Value",
+                          "fill": "#1F2328",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "2m",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 18,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "h8YF1",
+                          "name": "Metric Label",
+                          "fill": "#667085",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Edited",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "nb6Mg",
+                  "name": "Memory.md Action",
+                  "width": "fill_container",
+                  "fill": "#1F2328",
+                  "cornerRadius": 7,
+                  "gap": 8,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "b2JyE",
+                      "name": "File Icon",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "file",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Lr4R0",
+                      "name": "Action Label",
+                      "fill": "#FFFFFF",
+                      "content": "Open memory.md",
+                      "lineHeight": 1.18,
+                      "fontFamily": "$font",
+                      "fontSize": 13,
+                      "fontWeight": "650"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "p3Utd",
+                      "name": "Action Spacer",
+                      "width": "fill_container",
+                      "height": 1
+                    },
+                    {
+                      "type": "icon",
+                      "id": "gxUiF",
+                      "name": "Arrow Icon",
+                      "width": 15,
+                      "height": 15,
+                      "icon": "arrow-right",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nCO5t",
+              "name": "Loaded Memories Section",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "fIoiY",
+                  "name": "Loaded Header",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Q0SgT",
+                      "name": "Section Title",
+                      "fill": "#1F2328",
+                      "content": "Loaded memories",
+                      "lineHeight": 1.18,
+                      "fontFamily": "$font",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "obqYG",
+                      "name": "Loaded Spacer",
+                      "width": "fill_container",
+                      "height": 1
+                    },
+                    {
+                      "type": "text",
+                      "id": "mhfB1",
+                      "name": "Loaded Count",
+                      "fill": "#667085",
+                      "content": "18 active",
+                      "lineHeight": 1.18,
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "aZf7l",
+                  "name": "Project workflow Memory",
+                  "width": "fill_container",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E5E7EB",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "u3E9Z",
+                      "name": "Memory Top Row",
+                      "width": "fill_container",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "nX4nK",
+                          "name": "Memory Name",
+                          "fill": "#1F2328",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Project workflow",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "650"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "oyJ7J",
+                          "name": "Importance",
+                          "fill": "#EAF1FF",
+                          "cornerRadius": 6,
+                          "stroke": "#EAF1FF",
+                          "strokeWidth": 1,
+                          "padding": [
+                            5,
+                            8
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "qelT1",
+                              "name": "Label",
+                              "fill": "#2F6BFF",
+                              "content": "High",
+                              "lineHeight": 1.18,
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "650"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "an3KF",
+                      "name": "Memory Detail",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Use staged workbench before execution.",
+                      "lineHeight": 1.18,
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "SDDFI",
+                  "name": "API key handling Memory",
+                  "width": "fill_container",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E5E7EB",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "VDBHz",
+                      "name": "Memory Top Row",
+                      "width": "fill_container",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "jVQ2Z",
+                          "name": "Memory Name",
+                          "fill": "#1F2328",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "API key handling",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "650"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "PVzJu",
+                          "name": "Importance",
+                          "fill": "#EAF1FF",
+                          "cornerRadius": 6,
+                          "stroke": "#EAF1FF",
+                          "strokeWidth": 1,
+                          "padding": [
+                            5,
+                            8
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "A6L5PN",
+                              "name": "Label",
+                              "fill": "#2F6BFF",
+                              "content": "High",
+                              "lineHeight": 1.18,
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "650"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "B7EnU",
+                      "name": "Memory Detail",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Visible entry, never hidden setup.",
+                      "lineHeight": 1.18,
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Z82hDU",
+                  "name": "Verification habit Memory",
+                  "width": "fill_container",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#E5E7EB",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "dgni1",
+                      "name": "Memory Top Row",
+                      "width": "fill_container",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "MQnvN",
+                          "name": "Memory Name",
+                          "fill": "#1F2328",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Verification habit",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "650"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Zb6pX",
+                          "name": "Importance",
+                          "fill": "#FFF7E6",
+                          "cornerRadius": 6,
+                          "stroke": "#FFF7E6",
+                          "strokeWidth": 1,
+                          "padding": [
+                            5,
+                            8
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "nTwQ0",
+                              "name": "Label",
+                              "fill": "#D97706",
+                              "content": "Med",
+                              "lineHeight": 1.18,
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "650"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "tvUMS",
+                      "name": "Memory Detail",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Run typecheck, tests, and build after changes.",
+                      "lineHeight": 1.18,
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "OAHE5",
+              "name": "Candidate Memories Section",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "FJ5od",
+                  "name": "Candidates Header",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "N1HOB",
+                      "name": "Section Title",
+                      "fill": "#1F2328",
+                      "content": "Candidate memories",
+                      "lineHeight": 1.18,
+                      "fontFamily": "$font",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "CGqiQ",
+                      "name": "Candidate Spacer",
+                      "width": "fill_container",
+                      "height": 1
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Y8ptuA",
+                      "name": "Review Badge",
+                      "fill": "#F2F4F7",
+                      "cornerRadius": 6,
+                      "stroke": "#F2F4F7",
+                      "strokeWidth": 1,
+                      "padding": [
+                        5,
+                        8
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "G1N91E",
+                          "name": "Label",
+                          "fill": "#1F2328",
+                          "content": "Review 5",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "650"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "m5I2D",
+                  "name": "Candidate Table",
+                  "clip": true,
+                  "width": "fill_container",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#D0D5DD",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "kKPrh",
+                      "name": "Candidate Table Header",
+                      "width": "fill_container",
+                      "fill": "#F6F7F9",
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        10
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "VG9NG",
+                          "name": "Memory Column",
+                          "fill": "#667085",
+                          "textGrowth": "fixed-width",
+                          "width": 142,
+                          "content": "Memory",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "x5hkH",
+                          "name": "Level Column",
+                          "fill": "#667085",
+                          "textGrowth": "fixed-width",
+                          "width": 54,
+                          "content": "Level",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "D6U02G",
+                          "name": "Source Column",
+                          "fill": "#667085",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Source",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "mHz7u",
+                      "name": "Prefer repo notes Row",
+                      "width": "fill_container",
+                      "gap": 8,
+                      "padding": [
+                        9,
+                        10
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "e9nL3",
+                          "name": "Candidate Text",
+                          "fill": "#1F2328",
+                          "textGrowth": "fixed-width",
+                          "width": 142,
+                          "content": "Prefer repo notes",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "500"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "f5lkbh",
+                          "name": "Candidate Level",
+                          "fill": "#EAF1FF",
+                          "cornerRadius": 6,
+                          "stroke": "#EAF1FF",
+                          "strokeWidth": 1,
+                          "padding": [
+                            5,
+                            8
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "DiYpa",
+                              "name": "Label",
+                              "fill": "#2F6BFF",
+                              "content": "High",
+                              "lineHeight": 1.18,
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "650"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "D52GPT",
+                          "name": "Candidate Source",
+                          "fill": "#667085",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "chat",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "VORlE",
+                      "name": "Row Divider",
+                      "fill": "#E5E7EB",
+                      "width": "fill_container",
+                      "height": 1
+                    },
+                    {
+                      "type": "frame",
+                      "id": "qtJN4",
+                      "name": "Use localhost fallback Row",
+                      "width": "fill_container",
+                      "gap": 8,
+                      "padding": [
+                        9,
+                        10
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "t9Zz7B",
+                          "name": "Candidate Text",
+                          "fill": "#1F2328",
+                          "textGrowth": "fixed-width",
+                          "width": 142,
+                          "content": "Use localhost fallback",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "500"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "xoBYC",
+                          "name": "Candidate Level",
+                          "fill": "#FFF7E6",
+                          "cornerRadius": 6,
+                          "stroke": "#FFF7E6",
+                          "strokeWidth": 1,
+                          "padding": [
+                            5,
+                            8
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "jjJyK",
+                              "name": "Label",
+                              "fill": "#D97706",
+                              "content": "Med",
+                              "lineHeight": 1.18,
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "650"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "r2Ebhl",
+                          "name": "Candidate Source",
+                          "fill": "#667085",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "run",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "rectangle",
+                      "id": "TXeYm",
+                      "name": "Row Divider",
+                      "fill": "#E5E7EB",
+                      "width": "fill_container",
+                      "height": 1
+                    },
+                    {
+                      "type": "frame",
+                      "id": "C3qZH",
+                      "name": "Sync retry after auth Row",
+                      "width": "fill_container",
+                      "gap": 8,
+                      "padding": [
+                        9,
+                        10
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "wRxAv",
+                          "name": "Candidate Text",
+                          "fill": "#1F2328",
+                          "textGrowth": "fixed-width",
+                          "width": 142,
+                          "content": "Sync retry after auth",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "500"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "m14jH",
+                          "name": "Candidate Level",
+                          "fill": "#F2F4F7",
+                          "cornerRadius": 6,
+                          "stroke": "#F2F4F7",
+                          "strokeWidth": 1,
+                          "padding": [
+                            5,
+                            8
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "kV7fB",
+                              "name": "Label",
+                              "fill": "#667085",
+                              "content": "Low",
+                              "lineHeight": 1.18,
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "650"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "G3c9p3",
+                          "name": "Candidate Source",
+                          "fill": "#667085",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "git",
+                          "lineHeight": 1.18,
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "VUmbn",
+              "name": "Recent Update Footer",
+              "width": "fill_container",
+              "fill": "#F6F7F9",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 10,
+              "padding": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "TSHCE",
+                  "name": "Recent Update Row",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "IuNHv",
+                      "name": "Recent Status Icon",
+                      "width": 15,
+                      "height": 15,
+                      "icon": "refresh-cw",
+                      "library": "lucide",
+                      "fill": "#667085"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Ox3bK",
+                      "name": "Recent Update",
+                      "fill": "#1F2328",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Updated 2 minutes ago",
+                      "lineHeight": 1.18,
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "650"
+                    }
+                  ]
+                },
+                {
+                  "type": "rectangle",
+                  "id": "Ybxeu",
+                  "name": "Footer Divider",
+                  "fill": "#E5E7EB",
+                  "width": "fill_container",
+                  "height": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "LzPp0",
+                  "name": "Source File Row",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "E8GfXJ",
+                      "name": "Source Icon",
+                      "width": 15,
+                      "height": 15,
+                      "icon": "code",
+                      "library": "lucide",
+                      "fill": "#667085"
+                    },
+                    {
+                      "type": "text",
+                      "id": "gEwgo",
+                      "name": "Source File",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "source: server/workflow.ts",
+                      "lineHeight": 1.18,
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "500"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "I6Qqsq",
+      "x": 880,
+      "y": 1104,
+      "name": "Mobile Chat Home",
+      "clip": true,
+      "width": 393,
+      "height": 852,
+      "fill": "$surface",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "rqmtB",
+          "name": "Mobile Status Bar",
+          "width": "fill_container",
+          "height": 62,
+          "fill": "$surface",
+          "padding": [
+            18,
+            22,
+            10,
+            22
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "hrTRU",
+              "name": "Status Time",
+              "fill": "$text-primary",
+              "content": "9:41",
+              "fontFamily": "$font",
+              "fontSize": 15,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "Q86GZ",
+              "name": "Status Icons",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "YPLvo",
+                  "name": "Signal Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$text-primary"
+                },
+                {
+                  "type": "icon",
+                  "id": "lKFf1",
+                  "name": "Wifi Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$text-primary"
+                },
+                {
+                  "type": "icon",
+                  "id": "M1m9FZ",
+                  "name": "Battery Icon",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "battery",
+                  "library": "lucide",
+                  "fill": "$text-primary"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Iks7J",
+          "name": "Mobile Chat Wrapper",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": 14,
+          "padding": [
+            0,
+            18,
+            18,
+            18
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "MWsb9",
+              "name": "Mobile Chat Header",
+              "width": "fill_container",
+              "height": 56,
+              "fill": "$surface",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "U5MAZc",
+                  "name": "Mobile Title Block",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "mFrWl",
+                      "name": "Mobile Conversation Title",
+                      "fill": "$text-primary",
+                      "content": "Memory Agent",
+                      "fontFamily": "$font",
+                      "fontSize": 20,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "F7GzDC",
+                      "name": "Loaded Memory State",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "f3RsP",
+                          "name": "Loaded Memory Dot",
+                          "fill": "$green",
+                          "width": 7,
+                          "height": 7
+                        },
+                        {
+                          "type": "text",
+                          "id": "C5zh9",
+                          "name": "Loaded Memory Text",
+                          "fill": "$text-secondary",
+                          "content": "8 条记忆已加载",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "uRQzY",
+                  "name": "Mobile Header Actions",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "PJAU3",
+                      "name": "Open Settings Button",
+                      "width": 40,
+                      "height": 40,
+                      "fill": "$surface-muted",
+                      "cornerRadius": 20,
+                      "stroke": "$border",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "KN4MV",
+                          "x": 10,
+                          "y": 10,
+                          "name": "Open Settings Icon",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "settings-2",
+                          "library": "lucide",
+                          "fill": "$text-secondary"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ffHWP",
+                      "name": "Mobile Language Switch",
+                      "width": 74,
+                      "height": 34,
+                      "fill": "$surface-muted",
+                      "cornerRadius": 17,
+                      "stroke": "$border",
+                      "gap": 2,
+                      "padding": 3,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "R8GIm",
+                          "name": "Mobile Chinese Active",
+                          "width": "fill_container",
+                          "height": 28,
+                          "fill": "$blue",
+                          "cornerRadius": 14,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "d7ndO",
+                              "name": "Mobile Chinese Label",
+                              "fill": "#FFFFFF",
+                              "content": "中",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ApAS0",
+                          "name": "Mobile English Option",
+                          "width": "fill_container",
+                          "height": 28,
+                          "fill": "#00000000",
+                          "cornerRadius": 14,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "AYS5K",
+                              "name": "Mobile English Label",
+                              "fill": "$text-secondary",
+                              "content": "EN",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "zaas1",
+              "name": "Mobile Memory Notice",
+              "width": "fill_container",
+              "fill": "#F8FAFF",
+              "cornerRadius": 16,
+              "stroke": "#DBE7FF",
+              "gap": 9,
+              "padding": [
+                10,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "VAvGZ",
+                  "name": "Mobile Memory Notice Icon",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "brain",
+                  "library": "lucide",
+                  "fill": "$blue"
+                },
+                {
+                  "type": "text",
+                  "id": "voyDH",
+                  "name": "Mobile Memory Notice Text",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "主页保持纯聊天；角色、模型和记忆管理都在设置页。",
+                  "lineHeight": 1.32,
+                  "fontFamily": "$font",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "DOCYV",
+              "name": "Mobile Message List",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "layout": "vertical",
+              "gap": 18,
+              "padding": [
+                8,
+                0
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "hcjAm",
+                  "name": "Mobile AI Intro Row",
+                  "width": "fill_container",
+                  "gap": 9,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "CblQR",
+                      "name": "Mobile AI Intro Avatar",
+                      "width": 30,
+                      "height": 30,
+                      "fill": "#EFF4FF",
+                      "cornerRadius": 15,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "SjwZy",
+                          "x": 7,
+                          "y": 7,
+                          "name": "Mobile AI Intro Bot Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "bot",
+                          "library": "lucide",
+                          "fill": "$blue"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "akkR8",
+                      "name": "Mobile AI Intro Column",
+                      "width": 272,
+                      "layout": "vertical",
+                      "gap": 6,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Yq5ax",
+                          "name": "Mobile AI Intro Bubble",
+                          "width": "fill_container",
+                          "fill": "$surface-soft",
+                          "cornerRadius": [
+                            4,
+                            17,
+                            17,
+                            17
+                          ],
+                          "layout": "vertical",
+                          "padding": [
+                            12,
+                            13
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "gxYDr",
+                              "name": "Mobile AI Intro Text",
+                              "fill": "$text-primary",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "我已经读取你的长期偏好：先给结论，再说明边界；需要记录的内容会进入候选记忆。",
+                              "lineHeight": 1.42,
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "NXW3M",
+                          "name": "Mobile AI Intro Meta",
+                          "fill": "$text-tertiary",
+                          "content": "引用 3 条记忆",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "qAOIO",
+                  "name": "Mobile User Prompt Row",
+                  "width": "fill_container",
+                  "justifyContent": "end",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "LuPRo",
+                      "name": "Mobile User Prompt Bubble",
+                      "width": 274,
+                      "fill": "$blue-soft",
+                      "cornerRadius": [
+                        17,
+                        4,
+                        17,
+                        17
+                      ],
+                      "layout": "vertical",
+                      "padding": [
+                        12,
+                        13
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "AzjyD",
+                          "name": "Mobile User Prompt Text",
+                          "fill": "#1E3A8A",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "帮我记住：手机版主页只保留聊天，设置都收进去。",
+                          "lineHeight": 1.42,
+                          "fontFamily": "$font",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "NTOqg",
+                  "name": "Mobile AI Memory Row",
+                  "width": "fill_container",
+                  "gap": 9,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "MZn0k",
+                      "name": "Mobile AI Memory Avatar",
+                      "width": 30,
+                      "height": 30,
+                      "fill": "#EFF4FF",
+                      "cornerRadius": 15,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "IIlyk",
+                          "x": 7,
+                          "y": 7,
+                          "name": "Mobile AI Memory Bot Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "bot",
+                          "library": "lucide",
+                          "fill": "$blue"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "s8v19",
+                      "name": "Mobile AI Memory Column",
+                      "width": 272,
+                      "layout": "vertical",
+                      "gap": 6,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "DJzMS",
+                          "name": "Mobile AI Memory Bubble",
+                          "width": "fill_container",
+                          "fill": "$surface-soft",
+                          "cornerRadius": [
+                            4,
+                            17,
+                            17,
+                            17
+                          ],
+                          "layout": "vertical",
+                          "padding": [
+                            12,
+                            13
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "jw4Ne",
+                              "name": "Mobile AI Memory Text",
+                              "fill": "$text-primary",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "可以。我会把它作为候选记忆，等你确认后再整理到 memory.md。",
+                              "lineHeight": 1.42,
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "RYLOb",
+                          "name": "Mobile AI Memory Meta",
+                          "fill": "$text-tertiary",
+                          "content": "候选记忆 1 条",
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "MNbCT",
+              "name": "Mobile Composer Area",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "s9aYCF",
+                  "name": "Mobile Quick Actions",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "wzSlZ",
+                      "name": "Mobile 思考 Pill",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 18,
+                      "stroke": "$border",
+                      "gap": 6,
+                      "padding": [
+                        8,
+                        11
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "gEvCr",
+                          "name": "Mobile 思考 Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "brain-circuit",
+                          "library": "lucide",
+                          "fill": "$text-secondary"
+                        },
+                        {
+                          "type": "text",
+                          "id": "URR82",
+                          "name": "Mobile 思考 Label",
+                          "fill": "$text-secondary",
+                          "content": "思考",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "SxpKu",
+                      "name": "Mobile 记忆 Pill",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 18,
+                      "stroke": "$border",
+                      "gap": 6,
+                      "padding": [
+                        8,
+                        11
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "w2Hm1L",
+                          "name": "Mobile 记忆 Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "archive",
+                          "library": "lucide",
+                          "fill": "$blue"
+                        },
+                        {
+                          "type": "text",
+                          "id": "OyDnt",
+                          "name": "Mobile 记忆 Label",
+                          "fill": "$blue",
+                          "content": "记忆",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "J062s8",
+                      "name": "Mobile 工具 Pill",
+                      "fill": "$surface-muted",
+                      "cornerRadius": 18,
+                      "stroke": "$border",
+                      "gap": 6,
+                      "padding": [
+                        8,
+                        11
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "B7g49",
+                          "name": "Mobile 工具 Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "wrench",
+                          "library": "lucide",
+                          "fill": "$text-secondary"
+                        },
+                        {
+                          "type": "text",
+                          "id": "NI1nb",
+                          "name": "Mobile 工具 Label",
+                          "fill": "$text-secondary",
+                          "content": "工具",
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "VJMFm",
+                  "name": "Mobile Floating Input",
+                  "width": "fill_container",
+                  "height": 58,
+                  "fill": "$surface",
+                  "cornerRadius": 24,
+                  "stroke": "$border",
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "#10182814",
+                    "offset": {
+                      "x": 0,
+                      "y": 8
+                    },
+                    "blur": 22
+                  },
+                  "gap": 8,
+                  "padding": [
+                    9,
+                    10
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "zHRHC",
+                      "name": "Mobile Attach Button",
+                      "width": 34,
+                      "height": 34,
+                      "fill": "$surface-muted",
+                      "cornerRadius": 17,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "W4jUu",
+                          "x": 8,
+                          "y": 8,
+                          "name": "Mobile Attach Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "paperclip",
+                          "library": "lucide",
+                          "fill": "$text-secondary"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "GV1Yq",
+                      "name": "Mobile Input Placeholder",
+                      "fill": "$text-tertiary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "发消息，或让智能体记住一件事...",
+                      "fontFamily": "$font",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hgOae",
+                      "name": "Mobile Send Button",
+                      "width": 36,
+                      "height": 36,
+                      "fill": "$blue",
+                      "cornerRadius": 18,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "d3yGi",
+                          "x": 9,
+                          "y": 9,
+                          "name": "Mobile Send Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "send-horizontal",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Lkq2g",
+      "x": 1313,
+      "y": 1104,
+      "name": "Mobile Settings Page",
+      "clip": true,
+      "width": 393,
+      "height": 852,
+      "fill": "$surface",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "t3gONB",
+          "name": "Mobile Status Bar",
+          "width": "fill_container",
+          "height": 62,
+          "fill": "$surface",
+          "padding": [
+            18,
+            22,
+            10,
+            22
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "tW7Hm",
+              "name": "Status Time",
+              "fill": "$text-primary",
+              "content": "9:41",
+              "lineHeight": 1.2,
+              "fontFamily": "$font",
+              "fontSize": 15,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "aAxQb",
+              "name": "Status Icons",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "OiGDW",
+                  "name": "Signal Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$text-primary"
+                },
+                {
+                  "type": "icon",
+                  "id": "pHcGs",
+                  "name": "Wifi Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$text-primary"
+                },
+                {
+                  "type": "icon",
+                  "id": "Fs5O1",
+                  "name": "Battery Icon",
+                  "width": 22,
+                  "height": 22,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$text-primary"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "FrcNU",
+          "name": "Mobile Settings Wrapper",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": 9,
+          "padding": [
+            0,
+            18,
+            12,
+            18
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "IL5XY",
+              "name": "Settings Header",
+              "width": "fill_container",
+              "height": 50,
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "E6RIS",
+                  "name": "Header Title Group",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "GffaC",
+                      "name": "Header Eyebrow",
+                      "fill": "$blue",
+                      "content": "Memory Workbench",
+                      "lineHeight": 1.2,
+                      "fontFamily": "$font",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "EdcqD",
+                      "name": "Header Title",
+                      "fill": "$text-primary",
+                      "content": "Settings",
+                      "lineHeight": 1.2,
+                      "fontFamily": "$font",
+                      "fontSize": 23,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "H1ANYv",
+                  "name": "Close Settings Button",
+                  "width": 38,
+                  "height": 38,
+                  "fill": "$surface-muted",
+                  "cornerRadius": 19,
+                  "stroke": "$border",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "lNodd",
+                      "name": "Close Icon",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "x",
+                      "library": "lucide",
+                      "fill": "$text-secondary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GyltD",
+              "name": "Agent Identity Card",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": "$border",
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "#0000000A",
+                "offset": {
+                  "x": 0,
+                  "y": 2
+                },
+                "blur": 8
+              },
+              "layout": "vertical",
+              "gap": 6,
+              "padding": 11,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "BILs3",
+                  "name": "Agent Identity Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "O6XFL",
+                      "name": "Agent Identity Title",
+                      "fill": "$text-primary",
+                      "content": "Agent identity",
+                      "lineHeight": 1.2,
+                      "fontFamily": "$font",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "LAOFy",
+                      "name": "Sync Badge",
+                      "fill": "$blue-soft",
+                      "cornerRadius": 9999,
+                      "gap": 5,
+                      "padding": [
+                        4,
+                        8
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "mniR5",
+                          "name": "Sync Badge Icon",
+                          "width": 12,
+                          "height": 12,
+                          "icon": "check-circle",
+                          "library": "lucide",
+                          "fill": "$blue"
+                        },
+                        {
+                          "type": "text",
+                          "id": "wja4w",
+                          "name": "Sync Badge Label",
+                          "fill": "$blue",
+                          "content": "Synced",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "j0YPG",
+                  "name": "Agent Name Row",
+                  "width": "fill_container",
+                  "height": 42,
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "DBugp",
+                      "name": "Agent name Label Group",
+                      "gap": 9,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "MZd73",
+                          "name": "Agent name Icon Well",
+                          "width": 30,
+                          "height": 30,
+                          "fill": "$blue-soft",
+                          "cornerRadius": 15,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "CxkeI",
+                              "name": "Agent name Icon",
+                              "width": 15,
+                              "height": 15,
+                              "icon": "user-round",
+                              "library": "lucide",
+                              "fill": "$blue"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "QDXK9",
+                          "name": "Agent name Text Group",
+                          "layout": "vertical",
+                          "gap": 1,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "FSrkB",
+                              "name": "Agent name Label",
+                              "fill": "$text-secondary",
+                              "content": "Agent name",
+                              "lineHeight": 1.2,
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "G5AAtP",
+                              "name": "Agent name Value",
+                              "fill": "$text-primary",
+                              "content": "Memory Analyst",
+                              "lineHeight": 1.2,
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "icon",
+                      "id": "hOHwJ",
+                      "name": "Agent name Chevron",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "chevron-right",
+                      "library": "lucide",
+                      "fill": "$text-tertiary"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "tjfwk",
+                  "name": "Agent Role Row",
+                  "width": "fill_container",
+                  "height": 42,
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Vc9nV",
+                      "name": "Role Label Group",
+                      "gap": 9,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "sCcbo",
+                          "name": "Role Icon Well",
+                          "width": 30,
+                          "height": 30,
+                          "fill": "$blue-soft",
+                          "cornerRadius": 15,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "g00pdQ",
+                              "name": "Role Icon",
+                              "width": 15,
+                              "height": 15,
+                              "icon": "badge-check",
+                              "library": "lucide",
+                              "fill": "$blue"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "qWmlh",
+                          "name": "Role Text Group",
+                          "layout": "vertical",
+                          "gap": 1,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "ow5kw",
+                              "name": "Role Label",
+                              "fill": "$text-secondary",
+                              "content": "Role",
+                              "lineHeight": 1.2,
+                              "fontFamily": "$font",
+                              "fontSize": 11,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "WTyYa",
+                              "name": "Role Value",
+                              "fill": "$text-primary",
+                              "content": "Recall, compare, write",
+                              "lineHeight": 1.2,
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "icon",
+                      "id": "xeYw3",
+                      "name": "Role Chevron",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "chevron-right",
+                      "library": "lucide",
+                      "fill": "$text-tertiary"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "k4k1gX",
+              "name": "Behavior Section",
+              "width": "fill_container",
+              "fill": "$surface-muted",
+              "cornerRadius": 12,
+              "stroke": "$border",
+              "layout": "vertical",
+              "gap": 6,
+              "padding": 11,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ykq1Z",
+                  "name": "Behavior Section Header",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "WACSX",
+                      "name": "Behavior Section Icon",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "sliders-horizontal",
+                      "library": "lucide",
+                      "fill": "$blue"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Xlwpe",
+                      "name": "Behavior Section Title",
+                      "fill": "$text-primary",
+                      "content": "Behavior switches",
+                      "lineHeight": 1.2,
+                      "fontFamily": "$font",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "DpsGL",
+                  "name": "Language Switch Row",
+                  "width": "fill_container",
+                  "height": 40,
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "fJe7z",
+                      "name": "Language Copy",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 1,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "v1siIK",
+                          "name": "Language Label",
+                          "fill": "$text-primary",
+                          "content": "Language",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "YBsGi",
+                          "name": "Language Description",
+                          "fill": "$text-tertiary",
+                          "content": "界面语言 / Display language",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "MTHtJ",
+                      "name": "Chinese English Segmented Control",
+                      "width": 126,
+                      "height": 32,
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 10,
+                      "stroke": "$border",
+                      "gap": 2,
+                      "padding": 3,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "NVTlJ",
+                          "name": "Chinese Segment Selected",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": "$blue",
+                          "cornerRadius": 7,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "dd30W",
+                              "name": "Chinese Segment Label",
+                              "fill": "#FFFFFF",
+                              "content": "中文",
+                              "lineHeight": 1.2,
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "QpFbR",
+                          "name": "English Segment",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "cornerRadius": 7,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "JmfWj",
+                              "name": "English Segment Label",
+                              "fill": "$text-secondary",
+                              "content": "EN",
+                              "lineHeight": 1.2,
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Q5Kv24",
+                  "name": "Cite Memory Switch Row",
+                  "width": "fill_container",
+                  "height": 40,
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "pU0Se",
+                      "name": "Cite memory Copy",
+                      "width": 238,
+                      "layout": "vertical",
+                      "gap": 1,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Joehh",
+                          "name": "Cite memory Title",
+                          "fill": "$text-primary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Cite memory",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "phrZm",
+                          "name": "Cite memory Description",
+                          "fill": "$text-secondary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Show sources in replies",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "QU1ZX",
+                      "name": "Cite memory Switch",
+                      "width": 42,
+                      "height": 26,
+                      "fill": "$blue",
+                      "cornerRadius": 13,
+                      "stroke": "$blue",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "R2u76",
+                          "x": 18,
+                          "y": 2,
+                          "name": "Cite memory Switch Knob",
+                          "fill": "#FFFFFF",
+                          "width": 22,
+                          "height": 22,
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "#00000014",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 3
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "k7sE9L",
+                  "name": "Auto Save Switch Row",
+                  "width": "fill_container",
+                  "height": 40,
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Ueezh",
+                      "name": "Auto-save notes Copy",
+                      "width": 238,
+                      "layout": "vertical",
+                      "gap": 1,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "kdYN7",
+                          "name": "Auto-save notes Title",
+                          "fill": "$text-primary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Auto-save notes",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "XKBZ6",
+                          "name": "Auto-save notes Description",
+                          "fill": "$text-secondary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Capture durable preferences",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "VbMRN",
+                      "name": "Auto-save notes Switch",
+                      "width": 42,
+                      "height": 26,
+                      "fill": "$blue",
+                      "cornerRadius": 13,
+                      "stroke": "$blue",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "GAV8N",
+                          "x": 18,
+                          "y": 2,
+                          "name": "Auto-save notes Switch Knob",
+                          "fill": "#FFFFFF",
+                          "width": 22,
+                          "height": 22,
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "#00000014",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 3
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ZMfZX",
+                  "name": "Strict Mode Switch Row",
+                  "width": "fill_container",
+                  "height": 40,
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "OKC4W",
+                      "name": "Strict retrieval Copy",
+                      "width": 238,
+                      "layout": "vertical",
+                      "gap": 1,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "GZAnh",
+                          "name": "Strict retrieval Title",
+                          "fill": "$text-primary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Strict retrieval",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "zuMWv",
+                          "name": "Strict retrieval Description",
+                          "fill": "$text-secondary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Use selected memories only",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "nUZ4i",
+                      "name": "Strict retrieval Switch",
+                      "width": 42,
+                      "height": 26,
+                      "fill": "$surface-soft",
+                      "cornerRadius": 13,
+                      "stroke": "$border-strong",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "js3kR",
+                          "x": 2,
+                          "y": 2,
+                          "name": "Strict retrieval Switch Knob",
+                          "fill": "#FFFFFF",
+                          "width": 22,
+                          "height": 22,
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "#00000014",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 3
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ltJrW",
+              "name": "Temperature Section",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": "$border",
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "#0000000A",
+                "offset": {
+                  "x": 0,
+                  "y": 2
+                },
+                "blur": 8
+              },
+              "layout": "vertical",
+              "gap": 7,
+              "padding": 11,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "E6gUqk",
+                  "name": "Temperature Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Q8xiK1",
+                      "name": "Temperature Title Group",
+                      "layout": "vertical",
+                      "gap": 1,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "tvR3m",
+                          "name": "Temperature Title",
+                          "fill": "$text-primary",
+                          "content": "Temperature",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "AvrG4",
+                          "name": "Temperature Description",
+                          "fill": "$text-secondary",
+                          "content": "Balanced recall and synthesis",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "SoKe7",
+                      "name": "Temperature Value Pill",
+                      "fill": "$blue-soft",
+                      "cornerRadius": 9999,
+                      "padding": [
+                        5,
+                        9
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "uhFP5",
+                          "name": "Temperature Value",
+                          "fill": "$blue",
+                          "content": "0.4",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "HzLyT",
+                  "name": "Temperature Slider",
+                  "width": "fill_container",
+                  "height": 24,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 2,
+                      "id": "R4wNM",
+                      "x": 0,
+                      "y": 10,
+                      "name": "Temperature Track",
+                      "fill": "$surface-soft",
+                      "width": 321,
+                      "height": 4
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 2,
+                      "id": "Pl3zZ",
+                      "x": 0,
+                      "y": 10,
+                      "name": "Temperature Fill",
+                      "fill": "$blue",
+                      "width": 132,
+                      "height": 4
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "vCCPL",
+                      "x": 124,
+                      "y": 3,
+                      "name": "Temperature Thumb",
+                      "fill": "$blue",
+                      "width": 18,
+                      "height": 18,
+                      "stroke": "#FFFFFF",
+                      "strokeWidth": 3
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "PlGi0",
+              "name": "Model Api Summary",
+              "width": "fill_container",
+              "fill": "#F8FAFF",
+              "cornerRadius": 12,
+              "stroke": "#DBE7FF",
+              "gap": 10,
+              "padding": 11,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "kxKV1",
+                  "name": "Model Icon Well",
+                  "width": 34,
+                  "height": 34,
+                  "fill": "$blue",
+                  "cornerRadius": 17,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "U6a3G",
+                      "name": "Model Icon",
+                      "width": 17,
+                      "height": 17,
+                      "icon": "sparkles",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "CTqi7",
+                  "name": "Model Summary Copy",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 1,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "r6irt",
+                      "name": "Model Summary Title",
+                      "fill": "$text-primary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "GPT-4.1 via workbench API",
+                      "lineHeight": 1.2,
+                      "fontFamily": "$font",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "O56Mto",
+                      "name": "Model Summary Detail",
+                      "fill": "$text-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Key connected · 8k context · default endpoint",
+                      "lineHeight": 1.2,
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wm8Q9",
+              "name": "Memory Management Section",
+              "width": "fill_container",
+              "fill": "$surface-muted",
+              "cornerRadius": 12,
+              "stroke": "$border",
+              "layout": "vertical",
+              "gap": 7,
+              "padding": 11,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "U20GLB",
+                  "name": "Memory Section Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "N1kCPD",
+                      "name": "Memory Section Title",
+                      "fill": "$text-primary",
+                      "content": "Memory management",
+                      "lineHeight": 1.2,
+                      "fontFamily": "$font",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "jga5v",
+                      "name": "Memory Count",
+                      "fill": "$text-secondary",
+                      "content": "128 items",
+                      "lineHeight": 1.2,
+                      "fontFamily": "$font",
+                      "fontSize": 11,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Zsr2q",
+                  "name": "Memory Stats Row",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "j6R7Y",
+                      "name": "Loaded Memory Stat",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "UcMl5",
+                          "name": "Loaded Label",
+                          "fill": "$text-secondary",
+                          "content": "Loaded",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 10,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "c2j5R",
+                          "name": "Loaded Value",
+                          "fill": "$blue",
+                          "content": "42",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fVuAu",
+                      "name": "Candidate Memory Stat",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "N3uYU",
+                          "name": "Candidates Label",
+                          "fill": "$text-secondary",
+                          "content": "Candidates",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 10,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "jNPKI",
+                          "name": "Candidates Value",
+                          "fill": "$text-primary",
+                          "content": "17",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "toaL1",
+                      "name": "Conflict Memory Stat",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Z1L3jH",
+                          "name": "Conflicts Label",
+                          "fill": "$text-secondary",
+                          "content": "Conflicts",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 10,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "zRKkK",
+                          "name": "Conflicts Value",
+                          "fill": "$text-primary",
+                          "content": "3",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "pzwFU",
+                  "name": "Memory Actions Row",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SdD0e",
+                      "name": "Review Memories Button",
+                      "width": "fill_container",
+                      "height": 36,
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 10,
+                      "stroke": "$border",
+                      "gap": 7,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "I4gZM",
+                          "name": "Review Memories Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "list-checks",
+                          "library": "lucide",
+                          "fill": "$blue"
+                        },
+                        {
+                          "type": "text",
+                          "id": "nOTM9",
+                          "name": "Review Memories Label",
+                          "fill": "$text-primary",
+                          "content": "Review",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "zVzQP",
+                      "name": "Open Memory Markdown Button",
+                      "width": "fill_container",
+                      "height": 36,
+                      "fill": "$blue",
+                      "cornerRadius": 10,
+                      "gap": 7,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "FEEnA",
+                          "name": "Memory Markdown Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "file-text",
+                          "library": "lucide",
+                          "fill": "#FFFFFF"
+                        },
+                        {
+                          "type": "text",
+                          "id": "BgT2i",
+                          "name": "Memory Markdown Label",
+                          "fill": "#FFFFFF",
+                          "content": "memory.md",
+                          "lineHeight": 1.2,
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variables": {
+    "surface": {
+      "type": "color",
+      "value": "#FFFFFF"
+    },
+    "surface-muted": {
+      "type": "color",
+      "value": "#F6F7F9"
+    },
+    "surface-soft": {
+      "type": "color",
+      "value": "#F2F4F7"
+    },
+    "text-primary": {
+      "type": "color",
+      "value": "#1F2328"
+    },
+    "text-secondary": {
+      "type": "color",
+      "value": "#667085"
+    },
+    "text-tertiary": {
+      "type": "color",
+      "value": "#98A2B3"
+    },
+    "border": {
+      "type": "color",
+      "value": "#E5E7EB"
+    },
+    "border-strong": {
+      "type": "color",
+      "value": "#D0D5DD"
+    },
+    "blue": {
+      "type": "color",
+      "value": "#2F6BFF"
+    },
+    "blue-soft": {
+      "type": "color",
+      "value": "#EAF1FF"
+    },
+    "green": {
+      "type": "color",
+      "value": "#20A36A"
+    },
+    "amber": {
+      "type": "color",
+      "value": "#D97706"
+    },
+    "font": {
+      "type": "string",
+      "value": "Inter"
+    },
+    "mono": {
+      "type": "string",
+      "value": "Geist Mono"
+    }
+  },
+  "fileToken": "f2a14c1c-70bd-4fc2-b637-af9f5a7ce830"
+}
