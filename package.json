@@ -2,12 +2,14 @@
   "name": "memory-agent-workbench",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "vite --host 127.0.0.1",
     "dev:server": "node server/index.mjs",
     "build": "tsc && vite build",
+    "test": "vitest run",
     "qa:screenshots": "node scripts/capture-screenshots.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "start": "node server/index.mjs"
@@ -17,15 +19,20 @@
     "concurrently": "^9.2.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.5.2",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
     "vite": "^7.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "playwright": "^1.61.1",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "vitest": "^4.1.10"
   }
 }

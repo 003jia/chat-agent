@@ -4,6 +4,7 @@ export type ChatRole = "user" | "assistant" | "system";
 export type ProviderId = "openai-compatible" | "openai" | "deepseek" | "anthropic";
 
 export interface AgentConfig {
+  id: string;
   name: string;
   roleTitle: string;
   roleDescription: string;
@@ -17,12 +18,18 @@ export interface AgentConfig {
   };
 }
 
+export interface RoleStore {
+  selectedRoleId: string;
+  roles: AgentConfig[];
+}
+
 export interface ModelProviderConfig {
   id: ProviderId;
   label: string;
   baseURL: string;
   apiKey: string;
   apiKeySet?: boolean;
+  apiKeySource?: "env" | "file" | "none";
   model: string;
   contextLength: number;
   status: "missing" | "ready" | "error";
@@ -45,9 +52,19 @@ export interface ChatMessage {
 export interface Conversation {
   id: string;
   title: string;
+  roleId: string;
   messages: ChatMessage[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  roleId: string;
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
 }
 
 export interface MemoryItem {
@@ -56,8 +73,19 @@ export interface MemoryItem {
   type: string;
   level: MemoryLevel;
   source: string;
+  createdAt?: string;
   updatedAt: string;
   status: MemoryStatus;
+  op?: "add" | "update" | "noop";
+  targetId?: string;
+  keywords?: string[];
+  hash?: string;
+  accessCount?: number;
+  lastAccessedAt?: string;
+  supersedes?: string[];
+  supersededBy?: string;
+  confidence?: number;
+  reason?: string;
 }
 
 export interface MemoryState {
@@ -68,4 +96,34 @@ export interface MemoryState {
     candidates: number;
     editedMinutesAgo: number;
   };
+}
+
+export interface WebSearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+  source: string;
+}
+
+export interface WebSearchResponse {
+  query: string;
+  source: string;
+  fetchedAt: string;
+  results: WebSearchResult[];
+}
+
+export interface ApiWarning {
+  code: string;
+  message: string;
+}
+
+export interface ChatResponse {
+  conversation: Conversation;
+  reply: ChatMessage;
+  relevantMemories: MemoryItem[];
+  candidates: MemoryItem[];
+  candidateExtractionPending?: boolean;
+  webSearch?: WebSearchResponse | null;
+  webSearchError?: ApiWarning | null;
+  candidateExtractionError?: ApiWarning | null;
 }
