@@ -30,6 +30,7 @@ export interface ModelProviderConfig {
   apiKey: string;
   apiKeySet?: boolean;
   apiKeySource?: "env" | "file" | "none";
+  apiKeyPreview?: string;
   model: string;
   contextLength: number;
   status: "missing" | "ready" | "error";
@@ -76,7 +77,7 @@ export interface MemoryItem {
   createdAt?: string;
   updatedAt: string;
   status: MemoryStatus;
-  op?: "add" | "update" | "noop";
+  op?: "add" | "update" | "disable" | "noop";
   targetId?: string;
   keywords?: string[];
   hash?: string;
@@ -86,6 +87,11 @@ export interface MemoryItem {
   supersededBy?: string;
   confidence?: number;
   reason?: string;
+  retrieval?: {
+    score: number | null;
+    keywordHits: number | null;
+    resident: boolean;
+  };
 }
 
 export interface MemoryState {

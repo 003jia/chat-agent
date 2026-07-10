@@ -140,7 +140,7 @@ export const api = {
       method: "DELETE"
     }),
   organizeMemory: () =>
-    request<{ items: MemoryItem[]; markdown: string; mode: string }>("/api/memory/organize", {
+    request<{ items: MemoryItem[]; candidates: MemoryItem[]; markdown: string; mode: string; organizeError?: { code: string; message: string } | null }>("/api/memory/organize", {
       method: "POST",
       body: JSON.stringify({})
     })

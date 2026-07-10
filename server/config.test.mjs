@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CONTEXT_LENGTH, normalizeModelConfig, stripRuntimeModelConfig } from "./config.mjs";
+import { createApiKeyPreview, DEFAULT_CONTEXT_LENGTH, maskModelConfig, normalizeModelConfig, stripRuntimeModelConfig } from "./config.mjs";
 
 describe("normalizeModelConfig", () => {
   it("applies defaults and clamps context length", () => {
@@ -47,6 +47,7 @@ describe("stripRuntimeModelConfig", () => {
           apiKey: "file-key",
           apiKeySource: "file",
           apiKeySet: true,
+          apiKeyPreview: "••••••••",
           model: "gpt-4.1-mini"
         }
       }
@@ -57,5 +58,27 @@ describe("stripRuntimeModelConfig", () => {
       apiKey: "file-key",
       model: "gpt-4.1-mini"
     });
+  });
+});
+
+describe("API key masking", () => {
+  it("shows only the sk- prefix and masked dots", () => {
+    expect(createApiKeyPreview("sk-1234567890")).toBe("sk-••••••••");
+    expect(createApiKeyPreview("provider-key")).toBe("••••••••");
+  });
+
+  it("masks model config without returning the API key", () => {
+    const masked = maskModelConfig({
+      selectedProvider: "openai",
+      providers: {
+        openai: {
+          apiKey: "sk-1234567890"
+        }
+      }
+    }, {});
+
+    expect(masked.providers.openai.apiKey).toBe("");
+    expect(masked.providers.openai.apiKeyPreview).toBe("sk-••••••••");
+    expect(JSON.stringify(masked)).not.toContain("sk-1234567890");
   });
 });

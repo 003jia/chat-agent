@@ -1,5 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
+import { formatEditedAgoText, memoryLevelLabel, memoryTypeLabel, type UiLanguage } from "../i18n";
 import type { MemoryItem } from "../types";
 
 export function ToggleRow({ title, subtitle, checked, onChange }: { title: string; subtitle: string; checked: boolean; onChange: (checked: boolean) => void }) {
@@ -16,9 +17,9 @@ export function ToggleRow({ title, subtitle, checked, onChange }: { title: strin
 
 export function Segmented({ value, options, onChange }: { value: string; options: [string, string][]; onChange?: (value: string) => void }) {
   return (
-    <div className="segmented">
+    <div className="segmented" role="group">
       {options.map(([optionValue, label]) => (
-        <button key={optionValue} type="button" className={value === optionValue ? "active" : ""} onClick={() => onChange?.(optionValue)}>
+        <button key={optionValue} type="button" aria-pressed={value === optionValue} className={value === optionValue ? "active" : ""} onClick={() => onChange?.(optionValue)}>
           {label}
         </button>
       ))}
@@ -48,20 +49,21 @@ export function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
-export function MemoryCard({ item }: { item: MemoryItem }) {
+export function MemoryCard({ item, language, actions }: { item: MemoryItem; language?: UiLanguage; actions?: ReactNode }) {
   return (
     <div className="memory-card">
       <div>
-        <strong>{humanizeMemoryType(item.type)}</strong>
+        <strong>{humanizeMemoryType(item.type, language)}</strong>
         <p>{item.content}</p>
       </div>
-      <LevelBadge level={item.level} />
+      <LevelBadge level={item.level} language={language} />
+      {actions && <div className="memory-card-actions">{actions}</div>}
     </div>
   );
 }
 
-export function LevelBadge({ level }: { level: MemoryItem["level"] }) {
-  return <span className={`level ${level}`}>{level === "high" ? "高" : level === "medium" ? "中" : "低"}</span>;
+export function LevelBadge({ level, language }: { level: MemoryItem["level"]; language?: UiLanguage }) {
+  return <span className={`level ${level}`}>{memoryLevelLabel(level, language)}</span>;
 }
 
 export function MobileSettingRow({ icon, label, value, onClick }: { icon: ReactNode; label: string; value: string; onClick?: () => void }) {
@@ -77,17 +79,10 @@ export function MobileSettingRow({ icon, label, value, onClick }: { icon: ReactN
   );
 }
 
-export function humanizeMemoryType(type: string) {
-  const labels: Record<string, string> = {
-    user_preference: "用户偏好",
-    project_fact: "项目事实",
-    conversation_summary: "会话摘要"
-  };
-  return labels[type] || type;
+export function humanizeMemoryType(type: string, language?: UiLanguage) {
+  return memoryTypeLabel(type, language);
 }
 
-export function formatEditedAgo(minutes: number) {
-  if (minutes <= 0) return "刚刚更新";
-  if (minutes === 1) return "1 分钟前更新";
-  return `${minutes} 分钟前更新`;
+export function formatEditedAgo(minutes: number, language?: UiLanguage) {
+  return formatEditedAgoText(minutes, language);
 }

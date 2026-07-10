@@ -205,6 +205,33 @@ describe("createApp API smoke", () => {
     expect(ids).toContain("memory-b");
   });
 
+  it("organizes memory into review candidates instead of directly overwriting active memory", async () => {
+    const server = await createTestApp();
+    const headers = { "X-Admin-Token": "secret" };
+    await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/memory/commit",
+      headers,
+      body: {
+        items: [
+          { id: "candidate-plan-a", content: "用户偏好先给计划再执行", type: "user_preference", level: "high", source: "test", status: "candidate" },
+          { id: "candidate-plan-b", content: "用户偏好先计划再执行", type: "user_preference", level: "medium", source: "test", status: "candidate" }
+        ]
+      }
+    });
+
+    const organized = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/memory/organize",
+      headers
+    });
+
+    expect(organized.status).toBe(200);
+    expect(organized.json.mode).toBe("local-dedupe");
+    expect(organized.json.candidates.length).toBeGreaterThan(0);
+    expect(organized.json.items.find((item) => item.status === "candidate" && item.op === "disable")).toBeTruthy();
+  });
+
   it("supports role preset CRUD and selection", async () => {
     const server = await createTestApp();
     const headers = { "X-Admin-Token": "secret" };
@@ -301,7 +328,8 @@ async function createTestApp(options = {}) {
           status: "candidate"
         }],
         error: null
-      })
+      }),
+      organizeMemoryWithModel: async () => ({ candidates: [], error: null })
     },
     ...options
   });

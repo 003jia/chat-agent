@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { api, getAdminToken, setAdminToken } from "../api";
+import { getUiText } from "../i18n";
 import type { AgentConfig, ApiWarning, ChatMessage, Conversation, ConversationSummary, MemoryItem, MemoryState, ModelConfig, RoleStore, WebSearchResponse } from "../types";
 import type { ActivePanel, BusyAction, ChatMode, PanelPhase, WorkbenchProps } from "../workbenchTypes";
 
@@ -31,6 +32,7 @@ export function useWorkbenchState() {
   const [memoryFeedbackKey, setMemoryFeedbackKey] = useState(0);
   const [memoryPanelCollapsed, setMemoryPanelCollapsed] = useState(false);
   const panelCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const languageRef = useRef<AgentConfig["language"] | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -77,23 +79,49 @@ export function useWorkbenchState() {
     return roleStore.roles.find((role) => role.id === conversation.roleId) || roleStore.roles.find((role) => role.id === roleStore.selectedRoleId) || roleStore.roles[0] || null;
   }, [roleStore, conversation]);
 
+  const text = useMemo(() => getUiText(agentConfig?.language), [agentConfig?.language]);
+
+  useEffect(() => {
+    if (!agentConfig) return;
+    if (languageRef.current === agentConfig.language) return;
+    languageRef.current = agentConfig.language;
+    setStatus(getUiText(agentConfig.language).status.ready);
+    setStatusKey((key) => key + 1);
+  }, [agentConfig?.language]);
+
   function updateAdminToken(value: string) {
     setAdminToken(value);
     setAdminTokenState(value.trim());
-    showStatus(value.trim() ? "管理令牌已保存到当前浏览器会话" : "管理令牌已清除");
+    showStatus(value.trim() ? text.status.adminTokenSaved : text.status.adminTokenCleared);
   }
 
   async function updateAgent(next: AgentConfig) {
+    const languageOnly = agentConfig ? isOnlyLanguageChange(agentConfig, next) : false;
+    if (languageOnly) applyLocalRole(next);
     setSaving(true);
     try {
       const saved = await api.updateRole(next.id, next);
       setRoleStore(saved);
-      showStatus("智能体设置已同步");
+      showStatus(text.status.agentSynced);
     } catch (saveError) {
-      setError(errorMessage(saveError));
+      if (languageOnly) {
+        showStatus(getUiText(next.language).status.languageLocalOnly);
+      } else {
+        setError(errorMessage(saveError));
+      }
     } finally {
       setSaving(false);
     }
+  }
+
+  function applyLocalRole(next: AgentConfig) {
+    setRoleStore((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        roles: current.roles.map((role) => (role.id === next.id ? next : role))
+      };
+    });
   }
 
   async function createRole(role: Partial<AgentConfig>) {
@@ -102,7 +130,7 @@ export function useWorkbenchState() {
     try {
       const saved = await api.createRole(role);
       setRoleStore(saved);
-      showStatus("已新增角色预设");
+      showStatus(text.status.roleCreated);
     } catch (saveError) {
       setError(errorMessage(saveError));
     } finally {
@@ -117,7 +145,7 @@ export function useWorkbenchState() {
     try {
       const saved = await api.deleteRole(roleId);
       setRoleStore(saved);
-      showStatus("角色预设已删除");
+      showStatus(text.status.roleDeleted);
     } catch (deleteError) {
       setError(errorMessage(deleteError));
     } finally {
@@ -132,7 +160,7 @@ export function useWorkbenchState() {
     try {
       const saved = await api.selectRole(roleId);
       setRoleStore(saved);
-      showStatus("已切换默认角色");
+      showStatus(text.status.defaultRoleChanged);
     } catch (selectError) {
       setError(errorMessage(selectError));
     } finally {
@@ -149,7 +177,7 @@ export function useWorkbenchState() {
       const updated = await api.setConversationRole(conversation.id, roleId);
       setConversation(updated);
       setConversations(await refreshConversationList());
-      showStatus("已切换当前会话角色");
+      showStatus(text.status.conversationRoleChanged);
     } catch (roleError) {
       setError(errorMessage(roleError));
     } finally {
@@ -171,7 +199,7 @@ export function useWorkbenchState() {
       setConversation(created);
       setConversations(await refreshConversationList());
       setPendingCandidates([]);
-      showStatus("已创建新会话");
+      showStatus(text.status.conversationCreated);
     } catch (createError) {
       setError(errorMessage(createError));
     } finally {
@@ -188,7 +216,7 @@ export function useWorkbenchState() {
       const next = await api.getConversation(conversationId);
       setConversation(next);
       setPendingCandidates([]);
-      showStatus(`已切换到会话「${next.title}」`);
+      showStatus(agentConfig?.language === "en" ? `Switched to conversation "${next.title}"` : `已切换到会话「${next.title}」`);
     } catch (switchError) {
       setError(errorMessage(switchError));
     } finally {
@@ -208,7 +236,7 @@ export function useWorkbenchState() {
         const fallback = list[0];
         if (fallback) setConversation(await api.getConversation(fallback.id));
       }
-      showStatus("会话已删除");
+      showStatus(text.status.conversationDeleted);
     } catch (deleteError) {
       setError(errorMessage(deleteError));
     } finally {
@@ -223,9 +251,11 @@ export function useWorkbenchState() {
     try {
       const saved = await api.saveModelConfig(next);
       setModelConfig(saved);
-      showStatus("模型设置已同步");
+      showStatus(text.status.modelSynced);
+      return true;
     } catch (saveError) {
       setError(errorMessage(saveError));
+      return false;
     } finally {
       setSaving(false);
     }
@@ -236,7 +266,7 @@ export function useWorkbenchState() {
     setBusyAction("model-test");
     try {
       const result = await api.testModel();
-      showStatus(`模型返回：${result.message}`);
+      showStatus(agentConfig?.language === "en" ? `Model replied: ${result.message}` : `模型返回：${result.message}`);
       setModelConfig(await api.getModelConfig());
     } catch (testError) {
       setError(errorMessage(testError));
@@ -284,7 +314,7 @@ export function useWorkbenchState() {
       messages: [...activeConversation.messages, localUserMessage, localAssistantMessage],
       updatedAt: new Date().toISOString()
     });
-    showStatus("正在流式生成回复...");
+    showStatus(text.status.streaming);
     try {
       const useWebSearch = activeMode === "web";
       let finalRelevantMemories = 0;
@@ -327,29 +357,31 @@ export function useWorkbenchState() {
           }
           if (payload.candidates?.length) {
             setPendingCandidates((current) => mergePendingCandidates(payload.candidates!, current));
-            showStatus(`候选记忆 ${payload.candidates.length} 条已生成，等待确认。`);
+            showStatus(agentConfig?.language === "en" ? `${payload.candidates.length} memory candidate${payload.candidates.length === 1 ? "" : "s"} generated for review.` : `候选记忆 ${payload.candidates.length} 条已生成，等待确认。`);
           } else if (payload.candidateExtractionError) {
-            showStatus(`回复已完成，候选记忆抽取失败：${payload.candidateExtractionError.message}`);
+            showStatus(agentConfig?.language === "en" ? `Reply completed. Memory extraction failed: ${payload.candidateExtractionError.message}` : `回复已完成，候选记忆抽取失败：${payload.candidateExtractionError.message}`);
           }
           return;
         }
         if (eventName === "web.search_error") {
-          finalWebSearchErrorMessage = (data as ApiWarning).message || "联网搜索不可用。";
+          finalWebSearchErrorMessage = (data as ApiWarning).message || text.status.webSearchUnavailable;
           return;
         }
         if (eventName === "error") {
           const payload = data as ApiWarning;
-          throw new Error(payload.message || "流式输出失败。");
+          throw new Error(payload.message || text.status.streamFailed);
         }
       });
       setConversations(await refreshConversationList());
       setMemoryState(await api.getMemory());
       if (finalWebSearchErrorMessage) {
-        showStatus(`联网搜索不可用，已降级回答：${finalWebSearchErrorMessage}`);
+        showStatus(agentConfig?.language === "en" ? `Web search unavailable; answered normally: ${finalWebSearchErrorMessage}` : `联网搜索不可用，已降级回答：${finalWebSearchErrorMessage}`);
       } else if (finalWebSearchResultCount !== null) {
-        showStatus(`联网搜索 ${finalWebSearchResultCount} 条结果 · ${finalRelevantMemories ? `加载 ${finalRelevantMemories} 条记忆` : "未匹配记忆"}`);
+        showStatus(agentConfig?.language === "en"
+          ? `Web search found ${finalWebSearchResultCount} result${finalWebSearchResultCount === 1 ? "" : "s"} · ${finalRelevantMemories ? `loaded ${finalRelevantMemories} memor${finalRelevantMemories === 1 ? "y" : "ies"}` : "no matched memory"}`
+          : `联网搜索 ${finalWebSearchResultCount} 条结果 · ${finalRelevantMemories ? `加载 ${finalRelevantMemories} 条记忆` : "未匹配记忆"}`);
       } else {
-        showStatus(finalRelevantMemories ? `加载 ${finalRelevantMemories} 条记忆` : "未匹配记忆");
+        showStatus(agentConfig?.language === "en" ? (finalRelevantMemories ? `Loaded ${finalRelevantMemories} memor${finalRelevantMemories === 1 ? "y" : "ies"}` : "No matched memory") : (finalRelevantMemories ? `加载 ${finalRelevantMemories} 条记忆` : "未匹配记忆"));
       }
     } catch (chatError) {
       setError(errorMessage(chatError));
@@ -361,7 +393,7 @@ export function useWorkbenchState() {
 
   async function commitCandidates(items = pendingCandidates) {
     if (!items.length) {
-      openPanel("memory", "暂无候选记忆可提交。");
+      openPanel("memory", text.status.noMemoryCandidates);
       return;
     }
     setSaving(true);
@@ -373,7 +405,7 @@ export function useWorkbenchState() {
       setMemoryState(memory);
       setPendingCandidates((current) => current.filter((item) => !committedIds.has(item.id)));
       setMemoryFeedbackKey((key) => key + 1);
-      showStatus(`已保存到 ${result.rawPath}`);
+      showStatus(agentConfig?.language === "en" ? `Saved to ${result.rawPath}` : `已保存到 ${result.rawPath}`);
     } catch (commitError) {
       setError(errorMessage(commitError));
     } finally {
@@ -395,7 +427,7 @@ export function useWorkbenchState() {
         setPendingCandidates((current) => current.map((item) => (item.id === memoryId ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item)));
       }
       setMemoryFeedbackKey((key) => key + 1);
-      showStatus("记忆已更新");
+      showStatus(text.status.memoryUpdated);
     } catch (updateError) {
       setError(errorMessage(updateError));
     } finally {
@@ -404,30 +436,65 @@ export function useWorkbenchState() {
     }
   }
 
+  async function deleteMemoryItem(memoryId: string) {
+    setSaving(true);
+    setBusyAction("memory-commit");
+    try {
+      await api.deleteMemoryItem(memoryId);
+      const memory = await api.getMemory();
+      setMemoryState(memory);
+      setPendingCandidates((current) => current.filter((item) => item.id !== memoryId));
+      setMemoryFeedbackKey((key) => key + 1);
+      showStatus(agentConfig?.language === "en" ? "Memory deleted" : "记忆已删除");
+    } catch (deleteError) {
+      setError(errorMessage(deleteError));
+    } finally {
+      setSaving(false);
+      setBusyAction(null);
+    }
+  }
+
   async function rejectMemoryItem(memoryId: string) {
     await updateMemoryItem(memoryId, { status: "disabled" });
-    showStatus("候选记忆已拒绝");
+    showStatus(text.status.candidateRejected);
   }
 
   async function editMemoryItem(item: MemoryItem) {
-    const nextContent = window.prompt("编辑记忆内容", item.content);
+    const nextContent = window.prompt(agentConfig?.language === "en" ? "Edit memory content" : "编辑记忆内容", item.content);
     if (nextContent === null) return;
     const content = nextContent.trim();
     if (!content) {
-      notify("记忆内容不能为空。");
+      notify(text.status.memoryEmpty);
       return;
     }
-    await updateMemoryItem(item.id, { content });
+    const nextType = window.prompt(
+      agentConfig?.language === "en" ? "Memory type: user_preference / project_fact / conversation_summary" : "记忆类型：user_preference / project_fact / conversation_summary",
+      item.type
+    );
+    if (nextType === null) return;
+    const type = normalizeMemoryType(nextType, item.type);
+    const nextLevel = window.prompt(agentConfig?.language === "en" ? "Level: high / medium / low" : "等级：high / medium / low", item.level);
+    if (nextLevel === null) return;
+    const level = normalizeMemoryLevel(nextLevel, item.level);
+    await updateMemoryItem(item.id, { content, type, level });
   }
 
   async function organizeMemory() {
     setSaving(true);
     setBusyAction("memory-organize");
     try {
-      await api.organizeMemory();
-      setMemoryState(await api.getMemory());
+      const result = await api.organizeMemory();
+      const memory = await api.getMemory();
+      setMemoryState(memory);
+      if (result.candidates?.length) {
+        setPendingCandidates((current) => mergePendingCandidates(result.candidates, current));
+      }
       setMemoryFeedbackKey((key) => key + 1);
-      showStatus("memory.md 已整理");
+      showStatus(result.candidates?.length
+        ? agentConfig?.language === "en"
+          ? `Organize created ${result.candidates.length} review candidate${result.candidates.length === 1 ? "" : "s"}.`
+          : `整理生成 ${result.candidates.length} 条待审核候选。`
+        : text.status.memoryOrganized);
     } catch (organizeError) {
       setError(errorMessage(organizeError));
     } finally {
@@ -438,7 +505,7 @@ export function useWorkbenchState() {
 
   async function runWebSearch(query: string) {
     if (!query.trim()) {
-      notify("请输入搜索关键词。");
+      notify(text.status.searchKeywordRequired);
       return null;
     }
     setSaving(true);
@@ -446,7 +513,7 @@ export function useWorkbenchState() {
     try {
       const result = await api.webSearch(query);
       setWebSearchState(result);
-      showStatus(`联网搜索完成：${result.results.length} 条结果。`);
+      showStatus(agentConfig?.language === "en" ? `Web search complete: ${result.results.length} result${result.results.length === 1 ? "" : "s"}.` : `联网搜索完成：${result.results.length} 条结果。`);
       return result;
     } catch (searchError) {
       setError(errorMessage(searchError));
@@ -484,7 +551,7 @@ export function useWorkbenchState() {
     setPanelPhase("exit");
     if ((closingPanel === "memory" && activeMode === "memory") || (closingPanel === "tools" && activeMode === "tools")) {
       setActiveMode("normal");
-      notify("已回到普通对话模式。");
+      notify(text.status.normalMode);
     }
     if (panelCloseTimerRef.current) clearTimeout(panelCloseTimerRef.current);
     panelCloseTimerRef.current = setTimeout(() => {
@@ -498,29 +565,17 @@ export function useWorkbenchState() {
   function chooseMode(mode: ChatMode) {
     if (activeMode === mode) {
       const pairedPanel = mode === "memory" ? "memory" : mode === "tools" ? "tools" : mode === "web" ? "webSearch" : null;
+      setActiveMode("normal");
+      notify(text.status.normalMode);
       if (pairedPanel && activePanel === pairedPanel) {
-        if (mode === "web") {
-          setActiveMode("normal");
-          notify("已回到普通对话模式。");
-        }
         closePanel();
         return;
       }
-      setActiveMode("normal");
-      notify("已回到普通对话模式。");
       return;
     }
     setActiveMode(mode);
-    const labels: Record<ChatMode, string> = {
-      normal: "普通对话模式",
-      thinking: "深度思考模式已启用，下一条消息会要求先分析再回答。",
-      memory: "记忆整理模式已启用，下一条消息会优先识别候选记忆。",
-      tools: "工具模式已启用，可从工具面板触发本地动作。",
-      web: "联网搜索模式已启用，下一条消息会先搜索网络再回答。"
-    };
-    notify(labels[mode]);
+    notify(text.status.modeLabels[mode]);
     if (mode === "tools") openPanel("tools");
-    if (mode === "memory") openPanel("memory");
     if (mode === "web") openPanel("webSearch");
   }
 
@@ -528,15 +583,15 @@ export function useWorkbenchState() {
     const messages = conversation?.messages.slice(-6) || [];
     const summary = messages.length
       ? [
-          `会话：${conversation?.title || "当前对话"}`,
-          `最近 ${messages.length} 条消息围绕长期记忆、候选审核和执行约束展开。`,
-          `最新用户问题：${messages.filter((item) => item.role === "user").slice(-1)[0]?.content || "暂无"}`,
-          `当前已加载记忆：${memoryState?.stats.loaded || 0} 条；候选记忆：${pendingCandidates.length} 条。`
+          agentConfig?.language === "en" ? `Conversation: ${conversation?.title || "Current chat"}` : `会话：${conversation?.title || "当前对话"}`,
+          agentConfig?.language === "en" ? `The latest ${messages.length} messages cover long-term memory, candidate review, and execution constraints.` : `最近 ${messages.length} 条消息围绕长期记忆、候选审核和执行约束展开。`,
+          agentConfig?.language === "en" ? `Latest user question: ${messages.filter((item) => item.role === "user").slice(-1)[0]?.content || "None"}` : `最新用户问题：${messages.filter((item) => item.role === "user").slice(-1)[0]?.content || "暂无"}`,
+          agentConfig?.language === "en" ? `Loaded memory: ${memoryState?.stats.loaded || 0}; memory candidates: ${pendingCandidates.length}.` : `当前已加载记忆：${memoryState?.stats.loaded || 0} 条；候选记忆：${pendingCandidates.length} 条。`
         ].join("\n")
-      : "当前没有可总结的对话。";
+      : agentConfig?.language === "en" ? "There is no conversation to summarize yet." : "当前没有可总结的对话。";
     setGeneratedSummary(summary);
     openPanel("summary");
-    notify("已生成本地摘要。");
+    notify(text.status.summaryGenerated);
   }
 
   function saveSummaryCandidate() {
@@ -552,16 +607,16 @@ export function useWorkbenchState() {
     };
     setPendingCandidates((current) => mergePendingCandidates([candidate], current));
     openPanel("memory");
-    notify("摘要已加入候选记忆。");
+    notify(text.status.summaryCandidateSaved);
   }
 
   function handleAttachment() {
-    openPanel("tools", "附件入口已响应；第一版先通过工具面板管理本地动作。");
+    openPanel("tools", text.status.attachmentReady);
   }
 
   function handleVoice() {
-    if (!draft.trim()) setDraft("请把这段语音内容整理成文字：");
-    notify("语音入口已响应；已在输入框放入语音整理提示。");
+    if (!draft.trim()) setDraft(text.status.voicePrompt);
+    notify(text.status.voiceReady);
   }
 
   function toggleMemoryPanel() {
@@ -608,6 +663,7 @@ export function useWorkbenchState() {
     sendMessage,
     commitCandidates,
     updateMemoryItem,
+    deleteMemoryItem,
     rejectMemoryItem,
     editMemoryItem,
     organizeMemory,
@@ -650,7 +706,27 @@ function mergePendingCandidates(nextItems: MemoryItem[], currentItems: MemoryIte
   return Array.from(byId.values());
 }
 
+function isOnlyLanguageChange(previous: AgentConfig, next: AgentConfig) {
+  return previous.id === next.id
+    && previous.name === next.name
+    && previous.roleTitle === next.roleTitle
+    && previous.roleDescription === next.roleDescription
+    && previous.temperature === next.temperature
+    && JSON.stringify(previous.behavior) === JSON.stringify(next.behavior)
+    && previous.language !== next.language;
+}
+
+function normalizeMemoryType(value: string, fallback: string) {
+  const normalized = value.trim();
+  return ["user_preference", "project_fact", "conversation_summary"].includes(normalized) ? normalized : fallback;
+}
+
+function normalizeMemoryLevel(value: string, fallback: MemoryItem["level"]) {
+  const normalized = value.trim();
+  return ["high", "medium", "low"].includes(normalized) ? normalized as MemoryItem["level"] : fallback;
+}
+
 function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
-  return "操作失败。";
+  return getUiText().status.operationFailed;
 }

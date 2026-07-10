@@ -28,13 +28,16 @@ import { logError } from "./logger.mjs";
 import { callModel, streamModelDeltas } from "./model.mjs";
 import {
   commitMemoryItems,
+  createLocalOrganizeCandidates,
   extractCandidatesWithModel,
   generateCandidatesFromMessages,
   mergeCandidateMemories,
   normalizeMemoryItems,
+  organizeMemoryWithModel,
   organizeMemoryItems,
   renderMemoryMarkdown,
   selectRelevantMemories,
+  updateMemoryAccess,
   updateMemoryItemInIndex
 } from "./memory.mjs";
 import { buildSystemPrompt, formatUserMessageForModel } from "./prompt.mjs";
@@ -58,6 +61,7 @@ export function createApp(options = {}) {
     callModel,
     streamModelDeltas,
     extractCandidatesWithModel,
+    organizeMemoryWithModel,
     ...(options.modelClient || {})
   };
   const allowedOrigins = new Set(options.allowedOrigins || defaultAllowedOrigins);
@@ -208,6 +212,18 @@ export function createApp(options = {}) {
     await writeText(path.join(memoryDir, "memory.md"), renderMemoryMarkdown(normalized.filter((item) => item.status === "active")));
   }
 
+  async function saveMemoryIndexOnly(items) {
+    await writeJson(path.join(memoryDir, "index.json"), normalizeMemoryItems(items));
+  }
+
+  async function recordMemoryAccess(memoryIds) {
+    if (!memoryIds.length) return;
+    await memoryWriteLock(async () => {
+      const current = await getMemoryIndex();
+      await saveMemoryIndexOnly(updateMemoryAccess(current, memoryIds));
+    });
+  }
+
   async function getConversation(conversationId = "default") {
     const conversation = await readJson(path.join(conversationsDir, `${conversationId}.json`), null);
     if (conversation) return conversation;
@@ -318,6 +334,7 @@ export function createApp(options = {}) {
       candidateMemoryIds: []
     };
     const relevantMemories = selectRelevantMemories(content, memoryItems, agentConfig.behavior.strictRetrieval);
+    await recordMemoryAccess(relevantMemories.map((item) => item.id));
     const modelMessages = [
       { role: "system", content: buildSystemPrompt(agentConfig, relevantMemories, mode, webSearch, webSearchError) },
       ...selectConversationMessagesForContext(conversation.messages, provider.contextLength).map((item) => ({ role: item.role, content: item.content })),
@@ -746,12 +763,42 @@ export function createApp(options = {}) {
 
   app.post("/api/memory/organize", writeLimiter, adminAuth, async (_request, response, next) => {
     try {
+      const now = new Date().toISOString();
+      const [snapshotItems, roleStore, modelConfig] = await Promise.all([
+        getMemoryIndex(),
+        getRoleStore(),
+        readJson(path.join(configDir, "models.json"), defaultModelConfig).then((config) => normalizeModelConfig(config, env))
+      ]);
+      const agentConfig = roleStore.roles.find((role) => role.id === roleStore.selectedRoleId) || roleStore.roles[0] || defaultAgentConfig;
+      let provider = null;
+      try {
+        provider = providerFromConfig(modelConfig);
+      } catch (error) {
+        provider = null;
+      }
+      let mode = "model-candidates";
+      let organizeError = null;
+      let candidates = [];
+      if (provider?.apiKey) {
+        const organizedByModel = await modelClient.organizeMemoryWithModel?.(provider, agentConfig, snapshotItems);
+        candidates = organizedByModel?.candidates || [];
+        organizeError = organizedByModel?.error || null;
+      }
+      if (!candidates.length) {
+        mode = organizeError ? "local-dedupe-fallback" : "local-dedupe";
+        candidates = createLocalOrganizeCandidates(snapshotItems, now);
+      }
       const result = await memoryWriteLock(async () => {
-        const items = await getMemoryIndex();
-        const organized = organizeMemoryItems(items, new Date().toISOString());
-        const activeItems = organized.filter((item) => item.status === "active");
-        await saveMemoryIndex(organized);
-        return { items: organized, markdown: renderMemoryMarkdown(activeItems), mode: "local-dedupe" };
+        const currentItems = await getMemoryIndex();
+        const nextItems = candidates.length ? mergeCandidateMemories(currentItems, candidates, now) : organizeMemoryItems(currentItems, now);
+        await saveMemoryIndex(nextItems);
+        return {
+          items: nextItems,
+          candidates,
+          markdown: renderMemoryMarkdown(nextItems.filter((item) => item.status === "active")),
+          mode,
+          organizeError
+        };
       });
       response.json(result);
     } catch (error) {

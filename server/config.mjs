@@ -120,6 +120,7 @@ export function maskModelConfig(config, env = process.env) {
         ...provider,
         apiKey: "",
         apiKeySet: Boolean(provider.apiKey),
+        apiKeyPreview: createApiKeyPreview(provider.apiKey),
         status: provider.apiKey ? provider.status || "ready" : "missing"
       }
     ])
@@ -127,12 +128,19 @@ export function maskModelConfig(config, env = process.env) {
   return { ...normalized, providers };
 }
 
+export function createApiKeyPreview(apiKey) {
+  const key = String(apiKey || "").trim();
+  if (!key) return "";
+  if (key.startsWith("sk-")) return "sk-••••••••";
+  return "••••••••";
+}
+
 export function stripRuntimeModelConfig(config) {
   return {
     selectedProvider: config.selectedProvider,
     providers: Object.fromEntries(
       Object.entries(config.providers || {}).map(([id, provider]) => {
-        const { apiKeySource, apiKeySet, ...persistableProvider } = provider;
+        const { apiKeySource, apiKeySet, apiKeyPreview, ...persistableProvider } = provider;
         return [id, persistableProvider];
       })
     )

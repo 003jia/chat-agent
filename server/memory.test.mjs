@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commitMemoryItems, generateCandidatesFromMessages, mergeCandidateMemories, selectRelevantMemories, tokenizeMemoryText } from "./memory.mjs";
+import { commitMemoryItems, createLocalOrganizeCandidates, generateCandidatesFromMessages, mergeCandidateMemories, selectRelevantMemories, tokenizeMemoryText } from "./memory.mjs";
 
 describe("selectRelevantMemories", () => {
   it("only returns memories that match at least one keyword", () => {
@@ -38,6 +38,7 @@ describe("selectRelevantMemories", () => {
     const result = selectRelevantMemories("今天的天气如何", memories, false);
 
     expect(result.map((item) => item.id)).toEqual(["language"]);
+    expect(result[0].retrieval.resident).toBe(true);
   });
 
   it("uses the strict retrieval limit", () => {
@@ -78,6 +79,27 @@ describe("memory candidate structure", () => {
     expect(updated.content).toBe("用户改为喜欢深色主题");
     expect(updated.level).toBe("high");
     expect(result.items.some((item) => item.id === "candidate-theme")).toBe(false);
+  });
+
+  it("commits disable candidates by disabling the target memory", () => {
+    const existing = [
+      { id: "old-theme", content: "用户喜欢浅色主题", type: "user_preference", level: "medium", status: "active", updatedAt: "2026-07-01T00:00:00.000Z" },
+      { id: "candidate-disable", content: "重复或过期", type: "user_preference", level: "medium", status: "candidate", op: "disable", targetId: "old-theme", updatedAt: "2026-07-08T00:00:00.000Z" }
+    ];
+    const result = commitMemoryItems(existing, [existing[1]], "2026-07-08T00:00:00.000Z");
+
+    expect(result.items.find((item) => item.id === "old-theme").status).toBe("disabled");
+    expect(result.items.some((item) => item.id === "candidate-disable")).toBe(false);
+  });
+
+  it("creates local organize candidates for near-duplicate memories", () => {
+    const candidates = createLocalOrganizeCandidates([
+      { id: "a", content: "用户偏好先给计划再执行", type: "user_preference", level: "high", status: "active", updatedAt: "2026-07-08T00:00:00.000Z" },
+      { id: "b", content: "用户偏好先计划再执行", type: "user_preference", level: "medium", status: "active", updatedAt: "2026-07-07T00:00:00.000Z" }
+    ], "2026-07-09T00:00:00.000Z");
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({ op: "disable", targetId: "b", status: "candidate" });
   });
 });
 

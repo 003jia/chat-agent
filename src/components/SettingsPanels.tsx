@@ -1,13 +1,15 @@
 import { Bot, CheckCircle2, ClipboardList, Database, FileText, Loader2, MessageSquarePlus, Plus, SlidersHorizontal, Sparkles, Trash2, X } from "lucide-react";
-import { useState, type MouseEvent } from "react";
+import { useState, type FocusEvent, type MouseEvent } from "react";
+import { getUiText } from "../i18n";
 import type { ModelProviderConfig, ProviderId } from "../types";
 import type { WorkbenchProps } from "../workbenchTypes";
-import { InfoLine, MobileSettingRow, Segmented, Stat, ToggleRow } from "./ui";
+import { InfoLine, MobileSettingRow, Stat, ToggleRow } from "./ui";
 
 const contextLengthOptions = [32000, 64000, 128000];
 
 function RoleSwitcher({ roleStore, agentConfig, saving, busyAction, createRole, deleteRole, setConversationRole }: WorkbenchProps) {
   const busy = saving && busyAction === "role-save";
+  const text = getUiText(agentConfig.language);
 
   function handleSelect(roleId: string) {
     if (roleId === agentConfig.id) return;
@@ -15,22 +17,22 @@ function RoleSwitcher({ roleStore, agentConfig, saving, busyAction, createRole, 
   }
 
   function handleCreate() {
-    const name = window.prompt("新角色名称？", "新角色");
+    const name = window.prompt(text.sidebar.createRolePrompt, text.sidebar.createRoleDefault);
     if (!name || !name.trim()) return;
     createRole({ name: name.trim(), roleTitle: name.trim() });
   }
 
   function handleDelete(roleId: string) {
     if (roleStore.roles.length <= 1) return;
-    if (!window.confirm("确定删除该角色预设吗？")) return;
+    if (!window.confirm(text.sidebar.deleteRoleConfirm)) return;
     deleteRole(roleId);
   }
 
   return (
     <section className="panel-section role-switcher">
       <div className="section-head">
-        <h2>角色预设</h2>
-        <button type="button" className="icon-button" onClick={handleCreate} disabled={busy} aria-label="新增角色">
+        <h2>{text.sidebar.rolePresets}</h2>
+        <button type="button" className="icon-button" onClick={handleCreate} disabled={busy} aria-label={text.sidebar.newRole}>
           <Plus size={15} />
         </button>
       </div>
@@ -41,7 +43,7 @@ function RoleSwitcher({ roleStore, agentConfig, saving, busyAction, createRole, 
               {role.name || role.roleTitle}
             </button>
             {roleStore.roles.length > 1 && (
-              <button type="button" className="icon-button danger" onClick={() => handleDelete(role.id)} disabled={busy} aria-label="删除角色">
+              <button type="button" className="icon-button danger" onClick={() => handleDelete(role.id)} disabled={busy} aria-label={text.sidebar.deleteRole}>
                 <Trash2 size={13} />
               </button>
             )}
@@ -52,8 +54,9 @@ function RoleSwitcher({ roleStore, agentConfig, saving, busyAction, createRole, 
   );
 }
 
-function ConversationSwitcher({ conversation, conversations, saving, busyAction, createConversation, switchConversation, deleteConversation }: WorkbenchProps) {
+function ConversationSwitcher({ agentConfig, conversation, conversations, saving, busyAction, createConversation, switchConversation, deleteConversation }: WorkbenchProps) {
   const busy = saving && busyAction === "conversation-switch";
+  const text = getUiText(agentConfig.language);
 
   function handleCreate() {
     createConversation({});
@@ -62,15 +65,15 @@ function ConversationSwitcher({ conversation, conversations, saving, busyAction,
   function handleDelete(event: MouseEvent, conversationId: string) {
     event.stopPropagation();
     if (conversations.length <= 1) return;
-    if (!window.confirm("确定删除该会话吗？")) return;
+    if (!window.confirm(text.sidebar.deleteConversationConfirm)) return;
     deleteConversation(conversationId);
   }
 
   return (
     <section className="panel-section conversation-switcher">
       <div className="section-head">
-        <h2>会话</h2>
-        <button type="button" className="icon-button" onClick={handleCreate} disabled={busy} aria-label="新建会话">
+        <h2>{text.sidebar.conversations}</h2>
+        <button type="button" className="icon-button" onClick={handleCreate} disabled={busy} aria-label={text.sidebar.newConversation}>
           <MessageSquarePlus size={15} />
         </button>
       </div>
@@ -79,10 +82,10 @@ function ConversationSwitcher({ conversation, conversations, saving, busyAction,
           <li key={item.id} className={item.id === conversation.id ? "active" : ""}>
             <button type="button" onClick={() => switchConversation(item.id)} disabled={busy}>
               <span className="conversation-title">{item.title}</span>
-              <span className="conversation-meta">{item.messageCount} 条</span>
+              <span className="conversation-meta">{text.sidebar.messageCount(item.messageCount)}</span>
             </button>
             {conversations.length > 1 && (
-              <button type="button" className="icon-button danger" onClick={(event) => handleDelete(event, item.id)} disabled={busy} aria-label="删除会话">
+              <button type="button" className="icon-button danger" onClick={(event) => handleDelete(event, item.id)} disabled={busy} aria-label={text.sidebar.deleteConversation}>
                 <Trash2 size={13} />
               </button>
             )}
@@ -95,6 +98,7 @@ function ConversationSwitcher({ conversation, conversations, saving, busyAction,
 
 export function AgentSidebar(props: WorkbenchProps) {
   const { agentConfig, modelConfig, selectedProvider, updateAgent } = props;
+  const text = getUiText(agentConfig.language);
   return (
     <aside className="agent-sidebar">
       <div className="brand-row">
@@ -103,39 +107,24 @@ export function AgentSidebar(props: WorkbenchProps) {
         </div>
         <div>
           <h1>{agentConfig.name}</h1>
-          <p><span className="live-dot" />长期记忆已启用</p>
+          <p><span className="live-dot" />{text.sidebar.memoryEnabled}</p>
         </div>
       </div>
 
       <ConversationSwitcher {...props} />
 
-      <section className="soft-block language-block">
-        <div>
-          <strong>界面语言</strong>
-          <span>中文 / English</span>
-        </div>
-        <Segmented
-          value={agentConfig.language}
-          options={[
-            ["zh", "中"],
-            ["en", "EN"]
-          ]}
-          onChange={(value) => updateAgent({ ...agentConfig, language: value as "zh" | "en" })}
-        />
-      </section>
-
       <RoleSwitcher {...props} />
 
       <section className="panel-section">
-        <h2>角色设定</h2>
+        <h2>{text.sidebar.roleSettings}</h2>
         <div className="role-card">
           <input
-            aria-label="角色标题"
+            aria-label={text.sidebar.roleTitle}
             value={agentConfig.roleTitle}
             onChange={(event) => updateAgent({ ...agentConfig, roleTitle: event.target.value })}
           />
           <textarea
-            aria-label="角色描述"
+            aria-label={text.sidebar.roleDescription}
             value={agentConfig.roleDescription}
             onChange={(event) => updateAgent({ ...agentConfig, roleDescription: event.target.value })}
           />
@@ -143,22 +132,22 @@ export function AgentSidebar(props: WorkbenchProps) {
       </section>
 
       <section className="panel-section">
-        <h2>行为模式</h2>
+        <h2>{text.sidebar.behaviorMode}</h2>
         <ToggleRow
-          title="主动追问"
-          subtitle="缺少信息时先确认"
+          title={text.sidebar.proactiveFollowup}
+          subtitle={text.sidebar.proactiveFollowupHint}
           checked={agentConfig.behavior.proactiveFollowup}
           onChange={(checked) => updateAgent({ ...agentConfig, behavior: { ...agentConfig.behavior, proactiveFollowup: checked } })}
         />
         <ToggleRow
-          title="记录记忆"
-          subtitle="沉淀稳定事实"
+          title={text.sidebar.saveMemory}
+          subtitle={text.sidebar.saveMemoryHint}
           checked={agentConfig.behavior.autoSaveNotes}
           onChange={(checked) => updateAgent({ ...agentConfig, behavior: { ...agentConfig.behavior, autoSaveNotes: checked } })}
         />
         <ToggleRow
-          title="严格检索"
-          subtitle="限制越界输出"
+          title={text.sidebar.strictRetrieval}
+          subtitle={text.sidebar.strictRetrievalHint}
           checked={agentConfig.behavior.strictRetrieval}
           onChange={(checked) => updateAgent({ ...agentConfig, behavior: { ...agentConfig.behavior, strictRetrieval: checked } })}
         />
@@ -166,7 +155,7 @@ export function AgentSidebar(props: WorkbenchProps) {
 
       <section className="panel-section">
         <div className="section-head">
-          <h2>对话温度</h2>
+          <h2>{text.sidebar.temperature}</h2>
           <span>{agentConfig.temperature.toFixed(1)}</span>
         </div>
         <input
@@ -179,23 +168,23 @@ export function AgentSidebar(props: WorkbenchProps) {
           onChange={(event) => updateAgent({ ...agentConfig, temperature: Number(event.target.value) })}
         />
         <div className="range-labels">
-          <span>稳定</span>
-          <span>平衡</span>
-          <span>创造</span>
+          <span>{text.sidebar.stable}</span>
+          <span>{text.sidebar.balanced}</span>
+          <span>{text.sidebar.creative}</span>
         </div>
       </section>
 
       <section className="panel-section model-summary">
-        <h2>模型配置</h2>
-        <InfoLine label="模型" value={selectedProvider.model} />
-        <InfoLine label="API" value={selectedProvider.apiKeySet ? "已连接" : "未配置"} tone={selectedProvider.apiKeySet ? "green" : "amber"} />
-        <InfoLine label="供应商" value={modelConfig.providers[modelConfig.selectedProvider].label} />
-        <InfoLine label="上下文" value={`${Math.round(selectedProvider.contextLength / 1000)}k`} />
+        <h2>{text.sidebar.modelConfig}</h2>
+        <InfoLine label={text.sidebar.model} value={selectedProvider.model} />
+        <InfoLine label={text.sidebar.api} value={selectedProvider.apiKeySet ? text.sidebar.connected : text.sidebar.notConfigured} tone={selectedProvider.apiKeySet ? "green" : "amber"} />
+        <InfoLine label={text.sidebar.provider} value={modelConfig.providers[modelConfig.selectedProvider].label} />
+        <InfoLine label={text.sidebar.context} value={`${Math.round(selectedProvider.contextLength / 1000)}k`} />
       </section>
 
       <div className="hint-block">
         <Database size={18} />
-        <span>记忆写入前会先进候选区，确认后同步到 memory.md。</span>
+        <span>{text.sidebar.hint}</span>
       </div>
     </aside>
   );
@@ -203,15 +192,16 @@ export function AgentSidebar(props: WorkbenchProps) {
 
 export function MobileSettings(props: WorkbenchProps) {
   const { agentConfig, selectedProvider, setMobileView, pendingCandidates, memoryState, commitCandidates, updateAgent, openPanel } = props;
+  const text = getUiText(agentConfig.language);
   return (
     <section className="phone-frame settings motion-page">
       <div className="phone-status"><strong>9:41</strong><span>⌁ ◔ ▱</span></div>
       <header className="settings-header">
         <div>
-          <span>记忆工作台</span>
-          <h1>设置</h1>
+          <span>{text.mobileSettings.workspace}</span>
+          <h1>{text.mobileSettings.settings}</h1>
         </div>
-        <button type="button" onClick={() => setMobileView("chat")}><X size={20} /></button>
+        <button type="button" aria-label={text.common.close} onClick={() => setMobileView("chat")}><X size={20} /></button>
       </header>
       <div className="settings-stack">
         <AdminTokenPanel {...props} compact />
@@ -222,39 +212,33 @@ export function MobileSettings(props: WorkbenchProps) {
           <RoleSwitcher {...props} />
         </div>
         <div className="mobile-card">
-          <h2>智能体身份</h2>
-          <MobileSettingRow icon={<Bot size={16} />} label="智能体名称" value={agentConfig.name} onClick={() => openPanel("agent")} />
-          <MobileSettingRow icon={<CheckCircle2 size={16} />} label="角色" value={agentConfig.roleTitle} onClick={() => openPanel("agent")} />
+          <h2>{text.mobileSettings.agentIdentity}</h2>
+          <MobileSettingRow icon={<Bot size={16} />} label={text.mobileSettings.agentName} value={agentConfig.name} onClick={() => openPanel("agent")} />
+          <MobileSettingRow icon={<CheckCircle2 size={16} />} label={text.mobileSettings.role} value={agentConfig.roleTitle} onClick={() => openPanel("agent")} />
         </div>
         <div className="mobile-card">
-          <h2><SlidersHorizontal size={16} />行为开关</h2>
+          <h2><SlidersHorizontal size={16} />{text.mobileSettings.behaviorSwitches}</h2>
           <ToggleRow
-            title="中文界面"
-            subtitle="关闭后使用英文语言标记"
-            checked={agentConfig.language === "zh"}
-            onChange={(checked) => updateAgent({ ...agentConfig, language: checked ? "zh" : "en" })}
-          />
-          <ToggleRow
-            title="引用记忆"
-            subtitle="回答中显示记忆来源"
+            title={text.mobileSettings.citeMemory}
+            subtitle={text.mobileSettings.citeMemoryHint}
             checked={agentConfig.behavior.citeMemory}
             onChange={(checked) => updateAgent({ ...agentConfig, behavior: { ...agentConfig.behavior, citeMemory: checked } })}
           />
           <ToggleRow
-            title="自动记录"
-            subtitle="捕获稳定偏好"
+            title={text.mobileSettings.autoRecord}
+            subtitle={text.mobileSettings.autoRecordHint}
             checked={agentConfig.behavior.autoSaveNotes}
             onChange={(checked) => updateAgent({ ...agentConfig, behavior: { ...agentConfig.behavior, autoSaveNotes: checked } })}
           />
           <ToggleRow
-            title="严格检索"
-            subtitle="只使用选中记忆"
+            title={text.sidebar.strictRetrieval}
+            subtitle={text.mobileSettings.strictRetrievalHint}
             checked={agentConfig.behavior.strictRetrieval}
             onChange={(checked) => updateAgent({ ...agentConfig, behavior: { ...agentConfig.behavior, strictRetrieval: checked } })}
           />
         </div>
         <div className="mobile-card">
-          <div className="section-head"><h2>对话温度</h2><span>{agentConfig.temperature.toFixed(1)}</span></div>
+          <div className="section-head"><h2>{text.sidebar.temperature}</h2><span>{agentConfig.temperature.toFixed(1)}</span></div>
           <input
             className="range"
             type="range"
@@ -269,18 +253,18 @@ export function MobileSettings(props: WorkbenchProps) {
           <Sparkles size={22} />
           <div>
             <strong>{selectedProvider.model}</strong>
-            <span>{selectedProvider.apiKeySet ? "Key 已连接" : "Key 未配置"} · {Math.round(selectedProvider.contextLength / 1000)}k 上下文</span>
+            <span>{selectedProvider.apiKeySet ? text.mobileSettings.keyConnected : text.mobileSettings.keyMissing} · {Math.round(selectedProvider.contextLength / 1000)}k {text.mobileSettings.contextSuffix}</span>
           </div>
         </div>
         <div className="mobile-card">
-          <div className="section-head"><h2>记忆管理</h2><span>{memoryState.items.length} 项</span></div>
+          <div className="section-head"><h2>{text.mobileSettings.memoryManagement}</h2><span>{text.mobileSettings.items(memoryState.items.length)}</span></div>
           <div className="memory-metrics">
-            <Stat value={String(memoryState.stats.loaded)} label="已加载" />
-            <Stat value={String(pendingCandidates.length || memoryState.stats.candidates)} label="候选" />
-            <Stat value="0" label="冲突" />
+            <Stat value={String(memoryState.stats.loaded)} label={text.mobileSettings.loaded} />
+            <Stat value={String(pendingCandidates.length || memoryState.stats.candidates)} label={text.mobileSettings.candidates} />
+            <Stat value="0" label={text.mobileSettings.conflicts} />
           </div>
           <div className="mobile-buttons">
-            <button type="button" onClick={() => commitCandidates()}><ClipboardList size={16} />审核</button>
+            <button type="button" onClick={() => commitCandidates()}><ClipboardList size={16} />{text.mobileSettings.review}</button>
             <button type="button" className="blue" onClick={() => openPanel("memory")}><FileText size={16} />memory.md</button>
           </div>
         </div>
@@ -290,13 +274,17 @@ export function MobileSettings(props: WorkbenchProps) {
   );
 }
 
-export function ModelSettings({ modelConfig, saveModel, testModel, compact, saving, busyAction }: WorkbenchProps & { compact?: boolean }) {
+export function ModelSettings({ agentConfig, modelConfig, saveModel, testModel, compact, saving, busyAction, status, error }: WorkbenchProps & { compact?: boolean }) {
   const provider = modelConfig.providers[modelConfig.selectedProvider];
   const testing = busyAction === "model-test";
   const providerIds = Object.keys(modelConfig.providers) as ProviderId[];
+  const [apiKeyDraft, setApiKeyDraft] = useState("");
+  const [editingApiKey, setEditingApiKey] = useState(false);
+  const showingSavedApiKey = Boolean(provider.apiKeyPreview && !apiKeyDraft && !editingApiKey);
+  const text = getUiText(agentConfig.language);
 
   function patchProvider(patch: Partial<ModelProviderConfig>) {
-    saveModel({
+    return saveModel({
       ...modelConfig,
       providers: {
         ...modelConfig.providers,
@@ -308,9 +296,34 @@ export function ModelSettings({ modelConfig, saveModel, testModel, compact, savi
     });
   }
 
+  async function saveApiKeyDraft() {
+    const apiKey = apiKeyDraft.trim();
+    if (!apiKey) {
+      setEditingApiKey(false);
+      return true;
+    }
+    const ok = await patchProvider({ apiKey });
+    if (ok) {
+      setApiKeyDraft("");
+      setEditingApiKey(false);
+    }
+    return ok;
+  }
+
+  async function handleApiKeyBlur(event: FocusEvent<HTMLInputElement>) {
+    if (isModelTestTarget(event.relatedTarget)) return;
+    await saveApiKeyDraft();
+  }
+
+  async function handleTestClick() {
+    const ok = await saveApiKeyDraft();
+    if (!ok) return;
+    await testModel();
+  }
+
   return (
     <div className={compact ? "mobile-card model-editor compact" : "model-editor"}>
-      <h2>模型供应商</h2>
+      <h2>{text.model.providerTitle}</h2>
       <select
         value={modelConfig.selectedProvider}
         onChange={(event) => saveModel({ ...modelConfig, selectedProvider: event.target.value as ProviderId })}
@@ -324,11 +337,11 @@ export function ModelSettings({ modelConfig, saveModel, testModel, compact, savi
         <input value={provider.baseURL} onChange={(event) => patchProvider({ baseURL: event.target.value })} />
       </label>
       <label>
-        模型
+        {text.model.model}
         <input value={provider.model} onChange={(event) => patchProvider({ model: event.target.value })} />
       </label>
       <label>
-        上下文长度
+        {text.model.contextLength}
         <input
           type="number"
           min="1000"
@@ -337,7 +350,7 @@ export function ModelSettings({ modelConfig, saveModel, testModel, compact, savi
           onChange={(event) => patchProvider({ contextLength: Math.max(1000, Number(event.target.value) || 64000) })}
         />
       </label>
-      <div className="context-presets" aria-label="上下文长度快捷设置">
+      <div className="context-presets" aria-label={text.model.contextPresetLabel}>
         {contextLengthOptions.map((value) => (
           <button
             key={value}
@@ -352,20 +365,29 @@ export function ModelSettings({ modelConfig, saveModel, testModel, compact, savi
       <label>
         API Key
         <input
-          type="password"
-          placeholder={provider.apiKeySet ? "已配置，输入新 Key 替换" : "请输入 API Key"}
-          onBlur={(event) => {
-            if (event.target.value.trim()) patchProvider({ apiKey: event.target.value.trim() });
-            event.target.value = "";
-          }}
+          type={showingSavedApiKey ? "text" : "password"}
+          value={showingSavedApiKey ? provider.apiKeyPreview : apiKeyDraft}
+          placeholder={provider.apiKeySet ? text.model.apiKeyConfiguredPlaceholder : text.model.apiKeyPlaceholder}
+          readOnly={showingSavedApiKey}
+          className={showingSavedApiKey ? "api-key-masked" : ""}
+          onFocus={() => setEditingApiKey(true)}
+          onChange={(event) => setApiKeyDraft(event.target.value)}
+          onBlur={handleApiKeyBlur}
         />
       </label>
-      <button type="button" className={`test-button ${testing ? "is-loading" : ""}`} onClick={testModel} disabled={testing || saving}>
+      <button type="button" data-model-test="true" className={`test-button ${testing ? "is-loading" : ""}`} onClick={handleTestClick} disabled={testing}>
         {testing && <Loader2 className="spin" size={15} />}
-        {testing ? "测试中" : "测试连接"}
+        {testing ? text.model.testing : saving ? text.model.savingCanTest : text.model.testConnection}
       </button>
+      <p className={`model-feedback ${error ? "error" : ""}`}>
+        {error || (testing ? text.model.testingConnection : status)}
+      </p>
     </div>
   );
+}
+
+function isModelTestTarget(target: EventTarget | null) {
+  return target instanceof HTMLElement && target.dataset.modelTest === "true";
 }
 
 export function SettingsPanel(props: WorkbenchProps) {
@@ -381,34 +403,35 @@ export function SettingsPanel(props: WorkbenchProps) {
 }
 
 export function AgentEditorPanel({ agentConfig, updateAgent, embedded }: WorkbenchProps & { embedded?: boolean }) {
+  const text = getUiText(agentConfig.language);
   return (
     <div className={embedded ? "embedded-editor" : "drawer-body"}>
       <section className="drawer-section">
-        <h3>智能体身份</h3>
+        <h3>{text.mobileSettings.agentIdentity}</h3>
         <label className="field">
-          智能体名称
+          {text.mobileSettings.agentName}
           <input value={agentConfig.name} onChange={(event) => updateAgent({ ...agentConfig, name: event.target.value })} />
         </label>
         <label className="field">
-          角色标题
+          {text.sidebar.roleTitle}
           <input value={agentConfig.roleTitle} onChange={(event) => updateAgent({ ...agentConfig, roleTitle: event.target.value })} />
         </label>
         <label className="field">
-          行为提示词
+          {text.sidebar.roleDescription}
           <textarea value={agentConfig.roleDescription} onChange={(event) => updateAgent({ ...agentConfig, roleDescription: event.target.value })} />
         </label>
       </section>
       <section className="drawer-section">
-        <h3>行为设置</h3>
+        <h3>{text.sidebar.behaviorMode}</h3>
         <ToggleRow
-          title="主动追问"
-          subtitle="缺少信息时先确认"
+          title={text.sidebar.proactiveFollowup}
+          subtitle={text.sidebar.proactiveFollowupHint}
           checked={agentConfig.behavior.proactiveFollowup}
           onChange={(checked) => updateAgent({ ...agentConfig, behavior: { ...agentConfig.behavior, proactiveFollowup: checked } })}
         />
         <ToggleRow
-          title="引用记忆"
-          subtitle="回答中显示记忆来源"
+          title={text.mobileSettings.citeMemory}
+          subtitle={text.mobileSettings.citeMemoryHint}
           checked={agentConfig.behavior.citeMemory}
           onChange={(checked) => updateAgent({ ...agentConfig, behavior: { ...agentConfig.behavior, citeMemory: checked } })}
         />
@@ -417,8 +440,9 @@ export function AgentEditorPanel({ agentConfig, updateAgent, embedded }: Workben
   );
 }
 
-function AdminTokenPanel({ adminToken, updateAdminToken, compact }: WorkbenchProps & { compact?: boolean }) {
+function AdminTokenPanel({ agentConfig, adminToken, updateAdminToken, compact }: WorkbenchProps & { compact?: boolean }) {
   const [draft, setDraft] = useState("");
+  const text = getUiText(agentConfig.language);
 
   function saveToken() {
     if (!draft.trim()) return;
@@ -428,21 +452,21 @@ function AdminTokenPanel({ adminToken, updateAdminToken, compact }: WorkbenchPro
 
   return (
     <div className={compact ? "mobile-card model-editor compact" : "model-editor"}>
-      <h2>本地管理令牌</h2>
+      <h2>{text.admin.title}</h2>
       <label>
         X-Admin-Token
         <input
           type="password"
           value={draft}
-          placeholder={adminToken ? "已保存到当前会话，输入新令牌替换" : "输入 MEMORY_AGENT_ADMIN_TOKEN"}
+          placeholder={adminToken ? text.admin.placeholderSaved : text.admin.placeholder}
           onChange={(event) => setDraft(event.target.value)}
         />
       </label>
       <div className="drawer-actions">
-        <button type="button" onClick={saveToken} disabled={!draft.trim()}>保存令牌</button>
-        <button type="button" onClick={() => updateAdminToken("")} disabled={!adminToken}>清除令牌</button>
+        <button type="button" onClick={saveToken} disabled={!draft.trim()}>{text.admin.save}</button>
+        <button type="button" onClick={() => updateAdminToken("")} disabled={!adminToken}>{text.admin.clear}</button>
       </div>
-      <p className="empty-copy">{adminToken ? "写入、聊天和联网搜索请求会自动携带令牌。" : "未填写时，受保护接口会返回 AUTH_REQUIRED。"}</p>
+      <p className="empty-copy">{adminToken ? text.admin.savedHint : text.admin.missingHint}</p>
     </div>
   );
 }

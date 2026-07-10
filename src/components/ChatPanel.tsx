@@ -3,13 +3,15 @@ import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
-import type { Conversation } from "../types";
+import { getUiText, type UiLanguage } from "../i18n";
+import type { Conversation, MemoryItem } from "../types";
 import type { WorkbenchProps } from "../workbenchTypes";
 import { IconButton, Segmented } from "./ui";
 
 export function ChatPanel({
   agentConfig,
   conversation,
+  memoryState,
   draft,
   sending,
   status,
@@ -27,16 +29,18 @@ export function ChatPanel({
   handleVoice
 }: WorkbenchProps) {
   const scrollRef = useAutoScroll(conversation);
+  const text = getUiText(agentConfig.language);
+  const memoryById = new Map(memoryState.items.map((item) => [item.id, item]));
   return (
     <section className="chat-panel">
       <header className="chat-header">
         <div>
           <h2>{conversation.title}</h2>
-          <p><span className="blue-dot" />{agentConfig.name} · 已加载长期记忆 · 可调用工具</p>
+          <p><span className="blue-dot" />{agentConfig.name} · {text.chat.loadedMemoryTools}</p>
         </div>
         <div className="header-actions">
-          <IconButton label="搜索" onClick={() => openPanel("search")}><Search size={20} /></IconButton>
-          <IconButton label="设置" onClick={() => openPanel("settings")}><SlidersHorizontal size={20} /></IconButton>
+          <IconButton label={text.chat.search} onClick={() => openPanel("search")}><Search size={20} /></IconButton>
+          <IconButton label={text.chat.settings} onClick={() => openPanel("settings")}><SlidersHorizontal size={20} /></IconButton>
           <Segmented
             value={agentConfig.language}
             options={[["zh", "中"], ["en", "EN"]]}
@@ -48,31 +52,31 @@ export function ChatPanel({
       <div className="chat-scroll" ref={scrollRef}>
         <div className="memory-toast">
           <BrainCircuit size={22} />
-          <span>已结合你的项目偏好、近期讨论和 memory.md 片段回答；候选记忆会在右侧等待确认。</span>
+          <span>{text.chat.memoryToast}</span>
         </div>
         {conversation.messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+          <MessageBubble key={message.id} message={message} language={agentConfig.language} referencedMemories={message.memoryRefs.map((id) => memoryById.get(id)).filter(Boolean) as MemoryItem[]} />
         ))}
         {error && <div className="error-banner">{error}</div>}
       </div>
 
       <footer className="composer-zone">
         <div className="quick-actions">
-          <button type="button" className={activeMode === "thinking" ? "active" : ""} onClick={() => chooseMode("thinking")}><BrainCircuit size={16} />深度思考</button>
-          <button type="button" className={activeMode === "memory" ? "primary-soft active" : "primary-soft"} onClick={() => chooseMode("memory")}><Database size={16} />整理记忆</button>
-          <button type="button" className={activeMode === "web" ? "active" : ""} onClick={() => chooseMode("web")}><Globe2 size={16} />联网搜索</button>
-          <button type="button" onClick={generateSummary}><FileText size={16} />生成摘要</button>
-          <button type="button" className={activeMode === "tools" ? "active" : ""} onClick={() => chooseMode("tools")}><Wrench size={16} />调用工具</button>
+          <button type="button" className={activeMode === "thinking" ? "active" : ""} aria-pressed={activeMode === "thinking"} onClick={() => chooseMode("thinking")}><BrainCircuit size={16} />{text.chat.thinking}</button>
+          <button type="button" className={activeMode === "memory" ? "active" : ""} aria-pressed={activeMode === "memory"} onClick={() => chooseMode("memory")}><Database size={16} />{text.chat.organizeMemory}</button>
+          <button type="button" className={activeMode === "web" ? "active" : ""} aria-pressed={activeMode === "web"} onClick={() => chooseMode("web")}><Globe2 size={16} />{text.chat.webSearch}</button>
+          <button type="button" onClick={generateSummary}><FileText size={16} />{text.chat.summary}</button>
+          <button type="button" className={activeMode === "tools" ? "active" : ""} aria-pressed={activeMode === "tools"} onClick={() => chooseMode("tools")}><Wrench size={16} />{text.chat.tools}</button>
         </div>
         <form className="composer" onSubmit={sendMessage}>
-          <button type="button" aria-label="附件" onClick={handleAttachment}><Paperclip size={21} /></button>
-          <button type="button" aria-label="语音" onClick={handleVoice}><Mic size={21} /></button>
-          <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="发消息，或让智能体记住一件事..." />
-          <button className={`send-button ${sending ? "is-sending" : ""}`} type="submit" disabled={sending}>
+          <button type="button" aria-label={text.chat.attach} onClick={handleAttachment}><Paperclip size={21} /></button>
+          <button type="button" aria-label={text.chat.voice} onClick={handleVoice}><Mic size={21} /></button>
+          <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={text.chat.placeholder} />
+          <button className={`send-button ${sending ? "is-sending" : ""}`} type="submit" aria-label={text.chat.send} disabled={sending}>
             {sending ? <Loader2 className="spin" size={22} /> : <Send size={24} />}
           </button>
         </form>
-        <div className="status-line" key={statusKey}>{pendingCandidates.length ? `候选记忆 ${pendingCandidates.length} 条 · ${status}` : status}</div>
+        <div className="status-line" key={statusKey}>{pendingCandidates.length ? `${text.chat.candidates(pendingCandidates.length)} · ${status}` : status}</div>
       </footer>
     </section>
   );
@@ -81,16 +85,18 @@ export function ChatPanel({
 export function MobileChat(props: WorkbenchProps) {
   const { agentConfig, memoryState, conversation, pendingCandidates, activeMode, setMobileView, updateAgent, chooseMode } = props;
   const scrollRef = useAutoScroll(conversation);
+  const text = getUiText(agentConfig.language);
+  const memoryById = new Map(memoryState.items.map((item) => [item.id, item]));
   return (
     <section className="phone-frame motion-page">
       <div className="phone-status"><strong>9:41</strong><span>⌁ ◔ ▱</span></div>
       <header className="mobile-header">
         <div>
           <h1>{agentConfig.name}</h1>
-          <p><span className="live-dot" />{memoryState.stats.loaded} 条记忆已加载</p>
+          <p><span className="live-dot" />{text.chat.memoriesLoaded(memoryState.stats.loaded)}</p>
         </div>
         <div className="mobile-actions">
-          <button type="button" onClick={() => setMobileView("settings")}><SlidersHorizontal size={18} /></button>
+          <button type="button" aria-label={text.chat.settings} onClick={() => setMobileView("settings")}><SlidersHorizontal size={18} /></button>
           <Segmented
             value={agentConfig.language}
             options={[["zh", "中"], ["en", "EN"]]}
@@ -100,37 +106,40 @@ export function MobileChat(props: WorkbenchProps) {
       </header>
       <div className="mobile-note">
         <BrainCircuit size={20} />
-        <span>主页保持纯聊天；角色、模型和记忆管理都在设置页。</span>
+        <span>{text.chat.mobileNote}</span>
       </div>
       <div className="mobile-chat-list" ref={scrollRef}>
-        {conversation.messages.map((message) => <MessageBubble key={message.id} message={message} compact />)}
+        {conversation.messages.map((message) => <MessageBubble key={message.id} message={message} language={agentConfig.language} referencedMemories={message.memoryRefs.map((id) => memoryById.get(id)).filter(Boolean) as MemoryItem[]} compact />)}
       </div>
       <div className="mobile-composer">
         <div className="mobile-quick-actions">
-          <button type="button" className={activeMode === "thinking" ? "active" : ""} onClick={() => chooseMode("thinking")}><BrainCircuit size={15} />思考</button>
-          <button type="button" className={activeMode === "memory" ? "active" : ""} onClick={() => chooseMode("memory")}><Database size={15} />记忆</button>
-          <button type="button" className={activeMode === "web" ? "active" : ""} onClick={() => chooseMode("web")}><Globe2 size={15} />搜索</button>
-          <button type="button" className={activeMode === "tools" ? "active" : ""} onClick={() => chooseMode("tools")}><Wrench size={15} />工具</button>
+          <button type="button" className={activeMode === "thinking" ? "active" : ""} aria-pressed={activeMode === "thinking"} onClick={() => chooseMode("thinking")}><BrainCircuit size={15} />{text.chat.mobileThinking}</button>
+          <button type="button" className={activeMode === "memory" ? "active" : ""} aria-pressed={activeMode === "memory"} onClick={() => chooseMode("memory")}><Database size={15} />{text.chat.mobileMemory}</button>
+          <button type="button" className={activeMode === "web" ? "active" : ""} aria-pressed={activeMode === "web"} onClick={() => chooseMode("web")}><Globe2 size={15} />{text.chat.mobileSearch}</button>
+          <button type="button" className={activeMode === "tools" ? "active" : ""} aria-pressed={activeMode === "tools"} onClick={() => chooseMode("tools")}><Wrench size={15} />{text.chat.mobileTools}</button>
         </div>
         <ChatPanelMini {...props} />
-        <span>{pendingCandidates.length ? `候选记忆 ${pendingCandidates.length} 条` : "候选记忆将在这里提示"}</span>
+        <span>{pendingCandidates.length ? text.chat.candidates(pendingCandidates.length) : text.chat.candidatesHint}</span>
       </div>
     </section>
   );
 }
 
-function ChatPanelMini({ draft, sending, setDraft, sendMessage, handleAttachment }: WorkbenchProps) {
+function ChatPanelMini({ agentConfig, draft, sending, setDraft, sendMessage, handleAttachment }: WorkbenchProps) {
+  const text = getUiText(agentConfig.language);
   return (
     <form className="composer mobile" onSubmit={sendMessage}>
-      <button type="button" aria-label="附件" onClick={handleAttachment}><Paperclip size={20} /></button>
-      <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="发消息，或让智能体记住一件事..." />
-      <button className={`send-button ${sending ? "is-sending" : ""}`} type="submit" disabled={sending}>{sending ? <Loader2 className="spin" size={20} /> : <Send size={22} />}</button>
+      <button type="button" aria-label={text.chat.attach} onClick={handleAttachment}><Paperclip size={20} /></button>
+      <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={text.chat.placeholder} />
+      <button className={`send-button ${sending ? "is-sending" : ""}`} type="submit" aria-label={text.chat.send} disabled={sending}>{sending ? <Loader2 className="spin" size={20} /> : <Send size={22} />}</button>
     </form>
   );
 }
 
-export function MessageBubble({ message, compact = false }: { message: Conversation["messages"][number]; compact?: boolean }) {
+export function MessageBubble({ message, compact = false, language = "zh", referencedMemories = [] }: { message: Conversation["messages"][number]; compact?: boolean; language?: UiLanguage; referencedMemories?: MemoryItem[] }) {
   const isUser = message.role === "user";
+  const text = getUiText(language);
+  const hasMemoryRefs = !isUser && message.memoryRefs.length > 0;
   return (
     <article className={`message-row ${isUser ? "user" : "assistant"} ${compact ? "compact" : ""}`}>
       {!isUser && (
@@ -145,10 +154,24 @@ export function MessageBubble({ message, compact = false }: { message: Conversat
               {message.content}
             </ReactMarkdown>
           ) : (
-            <span className="typing-placeholder">正在生成...</span>
+            <span className="typing-placeholder">{text.chat.typing}</span>
           )}
         </div>
-        <small>{isUser ? "" : message.memoryRefs.length ? `引用 ${message.memoryRefs.length} 条记忆` : message.candidateMemoryIds.length ? `候选记忆 ${message.candidateMemoryIds.length} 条` : ""}</small>
+        {hasMemoryRefs && referencedMemories.length ? (
+          <details className="memory-ref-details">
+            <summary>{text.chat.referenced(message.memoryRefs.length)}</summary>
+            <ul>
+              {referencedMemories.map((item) => (
+                <li key={item.id}>
+                  <strong>{item.level}</strong>
+                  <span>{item.content}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        ) : (
+          <small>{isUser ? "" : message.memoryRefs.length ? text.chat.referenced(message.memoryRefs.length) : message.candidateMemoryIds.length ? text.chat.candidates(message.candidateMemoryIds.length) : ""}</small>
+        )}
       </div>
     </article>
   );
@@ -156,11 +179,14 @@ export function MessageBubble({ message, compact = false }: { message: Conversat
 
 function useAutoScroll(conversation: Conversation) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const previousConversationIdRef = useRef<string | null>(null);
   const latestMessage = conversation.messages[conversation.messages.length - 1];
   useEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
-    element.scrollTo({ top: element.scrollHeight, behavior: "smooth" });
+    const firstPositionForConversation = previousConversationIdRef.current !== conversation.id;
+    previousConversationIdRef.current = conversation.id;
+    element.scrollTo({ top: element.scrollHeight, behavior: firstPositionForConversation ? "auto" : "smooth" });
   }, [conversation.id, conversation.messages.length, latestMessage?.id, latestMessage?.content.length]);
   return scrollRef;
 }

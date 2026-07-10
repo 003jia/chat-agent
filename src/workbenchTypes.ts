@@ -37,11 +37,12 @@ export interface WorkbenchProps {
   createRole: (role: Partial<AgentConfig>) => Promise<void>;
   deleteRole: (roleId: string) => Promise<void>;
   selectRole: (roleId: string) => Promise<void>;
-  saveModel: (config: ModelConfig) => Promise<void>;
+  saveModel: (config: ModelConfig) => Promise<boolean>;
   testModel: () => Promise<void>;
   sendMessage: (event?: FormEvent) => Promise<void>;
   commitCandidates: (items?: MemoryItem[]) => Promise<void>;
   updateMemoryItem: (memoryId: string, patch: Partial<MemoryItem>) => Promise<void>;
+  deleteMemoryItem: (memoryId: string) => Promise<void>;
   rejectMemoryItem: (memoryId: string) => Promise<void>;
   editMemoryItem: (item: MemoryItem) => Promise<void>;
   organizeMemory: () => Promise<void>;
