@@ -106,6 +106,115 @@ describe("createApp API smoke", () => {
     expect(response.json.conversation.messages.at(-1).role).toBe("assistant");
   });
 
+  it("uses semantic memory retrieval and caches embeddings when configured", async () => {
+    const server = await createTestApp({
+      modelClient: {
+        callModel: async () => "semantic reply",
+        callEmbeddings: async (_provider, inputs) => inputs.map((input) => String(input).includes("界面") ? [1, 0] : [0.99, 0.01]),
+        extractCandidatesWithModel: async () => ({ candidates: [], error: null })
+      }
+    });
+    const modelsPath = path.join(server.paths.configDir, "models.json");
+    const modelConfig = JSON.parse(await readFile(modelsPath, "utf8"));
+    modelConfig.providers["openai-compatible"].embeddingModel = "test-embedding";
+    await writeFile(modelsPath, `${JSON.stringify(modelConfig, null, 2)}\n`, "utf8");
+    await writeFile(path.join(server.paths.memoryDir, "index.json"), JSON.stringify([{
+      id: "theme-memory",
+      content: "用户喜欢深色主题",
+      type: "user_preference",
+      level: "medium",
+      source: "test",
+      status: "active",
+      updatedAt: "2026-07-08T00:00:00.000Z"
+    }]), "utf8");
+
+    const response = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/chat",
+      headers: { "X-Admin-Token": "secret" },
+      body: { message: "给我一些界面风格建议" }
+    });
+    const saved = JSON.parse(await readFile(path.join(server.paths.memoryDir, "index.json"), "utf8"));
+
+    expect(response.status).toBe(200);
+    expect(response.json.relevantMemories.map((item) => item.id)).toContain("theme-memory");
+    expect(response.json.relevantMemories[0].retrieval.mode).toBe("semantic");
+    expect(saved[0].embeddingModel).toBe("test-embedding");
+    expect(saved[0].embedding).toEqual([0.99, 0.01]);
+  });
+
+  it("falls back to keyword retrieval when embedding calls fail", async () => {
+    const server = await createTestApp({
+      modelClient: {
+        callModel: async () => "fallback reply",
+        callEmbeddings: async () => {
+          throw new Error("embedding unavailable");
+        },
+        extractCandidatesWithModel: async () => ({ candidates: [], error: null })
+      }
+    });
+    const modelsPath = path.join(server.paths.configDir, "models.json");
+    const modelConfig = JSON.parse(await readFile(modelsPath, "utf8"));
+    modelConfig.providers["openai-compatible"].embeddingModel = "test-embedding";
+    await writeFile(modelsPath, `${JSON.stringify(modelConfig, null, 2)}\n`, "utf8");
+    await writeFile(path.join(server.paths.memoryDir, "index.json"), JSON.stringify([{
+      id: "express-memory",
+      content: "项目后端使用 Express",
+      type: "project_fact",
+      level: "medium",
+      source: "test",
+      status: "active"
+    }]), "utf8");
+
+    const response = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/chat",
+      headers: { "X-Admin-Token": "secret" },
+      body: { message: "Express 后端怎么调整" }
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.json.reply.content).toBe("fallback reply");
+    expect(response.json.relevantMemories.map((item) => item.id)).toContain("express-memory");
+    expect(response.json.relevantMemories[0].retrieval.mode).toBe("keyword");
+  });
+
+  it("generates an embedding cache after an active memory is committed", async () => {
+    const server = await createTestApp({
+      modelClient: {
+        callEmbeddings: async (_provider, inputs) => inputs.map(() => [0.5, 0.5])
+      }
+    });
+    const modelsPath = path.join(server.paths.configDir, "models.json");
+    const modelConfig = JSON.parse(await readFile(modelsPath, "utf8"));
+    modelConfig.providers["openai-compatible"].embeddingModel = "test-embedding";
+    await writeFile(modelsPath, `${JSON.stringify(modelConfig, null, 2)}\n`, "utf8");
+
+    const committed = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/memory/commit",
+      headers: { "X-Admin-Token": "secret" },
+      body: {
+        items: [{
+          id: "new-memory",
+          content: "项目使用液态玻璃界面",
+          type: "project_fact",
+          level: "medium",
+          source: "test",
+          status: "candidate"
+        }]
+      }
+    });
+    await server.waitForBackgroundTasks();
+    const saved = JSON.parse(await readFile(path.join(server.paths.memoryDir, "index.json"), "utf8"));
+    const item = saved.find((memory) => memory.id === "new-memory");
+
+    expect(committed.status).toBe(200);
+    expect(item.embedding).toEqual([0.5, 0.5]);
+    expect(item.embeddingModel).toBe("test-embedding");
+    expect(item.embeddingHash).toBe(item.hash);
+  });
+
   it("streams message.done before memory candidate extraction completes", async () => {
     const server = await createTestApp();
     const response = await invokeApp(server.app, {
@@ -304,6 +413,7 @@ describe("createApp API smoke", () => {
 async function createTestApp(options = {}) {
   const rootDir = await mkdtemp(path.join(os.tmpdir(), "memory-agent-test-"));
   tempRoots.push(rootDir);
+  const { modelClient: modelClientOverrides, ...appOptions } = options;
   const server = createApp({
     rootDir,
     env: {
@@ -311,6 +421,7 @@ async function createTestApp(options = {}) {
       MEMORY_AGENT_API_KEY_OPENAI_COMPATIBLE: "test-key"
     },
     logger: { error: () => undefined },
+    ...appOptions,
     modelClient: {
       callModel: async () => "mock reply",
       streamModelDeltas: async function* () {
@@ -329,9 +440,9 @@ async function createTestApp(options = {}) {
         }],
         error: null
       }),
-      organizeMemoryWithModel: async () => ({ candidates: [], error: null })
-    },
-    ...options
+      organizeMemoryWithModel: async () => ({ candidates: [], error: null }),
+      ...(modelClientOverrides || {})
+    }
   });
   testServers.push(server);
   await server.ensureDataStore();

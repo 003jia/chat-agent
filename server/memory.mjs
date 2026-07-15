@@ -5,6 +5,8 @@ import {
   MEMORY_MIN_KEYWORD_MATCHES,
   MEMORY_RECENCY_WINDOW_DAYS,
   MEMORY_RETRIEVAL_LIMIT,
+  MEMORY_SEMANTIC_MIN_SIMILARITY,
+  MEMORY_SEMANTIC_SCORE_WEIGHT,
   MEMORY_SUMMARY_CHAR_LIMIT,
   RESIDENT_MEMORY_LIMIT,
   STRICT_MEMORY_RETRIEVAL_LIMIT
@@ -16,9 +18,12 @@ const validStatuses = new Set(["active", "candidate", "disabled"]);
 const validOps = new Set(["add", "update", "disable", "noop"]);
 const cjkStopwords = new Set(["我", "你", "他", "她", "它", "们", "的", "了", "和", "是", "在", "有", "用", "请", "要", "不", "会", "这", "那", "个", "一", "就", "都", "也", "很", "把", "给", "与", "或"]);
 
-export function selectRelevantMemories(message, memoryItems, strictRetrieval) {
+export function selectRelevantMemories(message, memoryItems, strictRetrieval, options = {}) {
   const active = normalizeMemoryItems(memoryItems).filter((item) => item.status === "active");
   const keywords = tokenizeMemoryText(message);
+  const queryEmbedding = normalizeEmbedding(options.queryEmbedding);
+  const embeddingModel = String(options.embeddingModel || "");
+  const semanticThreshold = Number.isFinite(options.semanticThreshold) ? Number(options.semanticThreshold) : MEMORY_SEMANTIC_MIN_SIMILARITY;
   const totalLimit = strictRetrieval ? STRICT_MEMORY_RETRIEVAL_LIMIT : MEMORY_RETRIEVAL_LIMIT;
   const resident = active
     .filter((item) => item.level === "high" && item.type === "user_preference")
@@ -30,14 +35,28 @@ export function selectRelevantMemories(message, memoryItems, strictRetrieval) {
     .map((item) => {
       const itemTokens = item.keywords?.length ? new Set(item.keywords) : tokenizeMemoryText(`${item.content} ${item.type}`);
       const keywordHits = countKeywordHits(keywords, itemTokens);
+      const semanticSimilarity = queryEmbedding.length && item.embeddingModel === embeddingModel
+        ? cosineSimilarity(queryEmbedding, item.embedding)
+        : null;
       const levelWeight = item.level === "high" ? 3 : item.level === "medium" ? 2 : 1;
-      const score = keywordHits * 2 + recencyBoost(item.updatedAt) + levelWeight * 0.5;
-      return { item: withRetrievalMeta(item, { score, keywordHits, resident: false }), score, keywordHits };
+      const semanticScore = semanticSimilarity === null ? 0 : Math.max(0, semanticSimilarity) * MEMORY_SEMANTIC_SCORE_WEIGHT;
+      const score = keywordHits * 2 + semanticScore + recencyBoost(item.updatedAt) + levelWeight * 0.5;
+      const mode = keywordHits > 0 && semanticSimilarity !== null && semanticSimilarity >= semanticThreshold
+        ? "hybrid"
+        : keywordHits > 0
+          ? "keyword"
+          : "semantic";
+      return {
+        item: withRetrievalMeta(item, { score, keywordHits, semanticSimilarity, resident: false, mode }),
+        score,
+        keywordHits,
+        semanticSimilarity
+      };
     })
-    .filter((entry) => entry.keywordHits >= MEMORY_MIN_KEYWORD_MATCHES);
+    .filter((entry) => entry.keywordHits >= MEMORY_MIN_KEYWORD_MATCHES || (entry.semanticSimilarity !== null && entry.semanticSimilarity >= semanticThreshold));
   scored.sort((a, b) => b.score - a.score);
   return [
-    ...resident.map((item) => withRetrievalMeta(item, { score: null, keywordHits: null, resident: true })),
+    ...resident.map((item) => withRetrievalMeta(item, { score: null, keywordHits: null, semanticSimilarity: null, resident: true, mode: "resident" })),
     ...scored.slice(0, Math.max(0, totalLimit - resident.length)).map((entry) => entry.item)
   ];
 }
@@ -140,6 +159,7 @@ export function normalizeMemoryItem(item, now = new Date().toISOString()) {
   const status = validStatuses.has(item?.status) ? item.status : "candidate";
   const op = validOps.has(item?.op) ? item.op : undefined;
   const updatedAt = item?.updatedAt || now;
+  const hash = createMemoryHash({ content, type });
   const normalized = {
     id: item?.id || createId(status === "candidate" ? "candidate" : "memory"),
     content,
@@ -149,8 +169,8 @@ export function normalizeMemoryItem(item, now = new Date().toISOString()) {
     createdAt: item?.createdAt || updatedAt,
     updatedAt,
     status,
-    keywords: Array.isArray(item?.keywords) && item.keywords.length ? item.keywords : Array.from(tokenizeMemoryText(`${content} ${type}`)).slice(0, 40),
-    hash: item?.hash || createMemoryHash({ content, type }),
+    keywords: Array.from(tokenizeMemoryText(`${content} ${type}`)).slice(0, 40),
+    hash,
     accessCount: Number.isFinite(item?.accessCount) ? item.accessCount : 0
   };
   if (op) normalized.op = op;
@@ -160,7 +180,51 @@ export function normalizeMemoryItem(item, now = new Date().toISOString()) {
   if (item?.supersededBy) normalized.supersededBy = String(item.supersededBy);
   if (Number.isFinite(item?.confidence)) normalized.confidence = Math.max(0, Math.min(1, Number(item.confidence)));
   if (item?.reason) normalized.reason = summarizeText(item.reason, 120);
+  const embedding = normalizeEmbedding(item?.embedding);
+  if (embedding.length && item?.embeddingModel && item?.embeddingHash === hash) {
+    normalized.embedding = embedding;
+    normalized.embeddingModel = String(item.embeddingModel);
+    normalized.embeddingHash = hash;
+    normalized.embeddingUpdatedAt = item.embeddingUpdatedAt || updatedAt;
+  }
   return normalized;
+}
+
+export function attachMemoryEmbedding(item, embedding, embeddingModel, now = new Date().toISOString()) {
+  const normalized = normalizeMemoryItem(item, now);
+  const vector = normalizeEmbedding(embedding);
+  if (!vector.length || !embeddingModel) return normalized;
+  return normalizeMemoryItem({
+    ...normalized,
+    embedding: vector,
+    embeddingModel,
+    embeddingHash: normalized.hash,
+    embeddingUpdatedAt: now
+  }, now);
+}
+
+export function needsMemoryEmbedding(item, embeddingModel) {
+  const normalized = normalizeMemoryItem(item);
+  return normalized.status === "active" && Boolean(embeddingModel) && (
+    !normalized.embedding?.length
+    || normalized.embeddingModel !== embeddingModel
+    || normalized.embeddingHash !== normalized.hash
+  );
+}
+
+export function mergeMemoryEmbeddingUpdates(items, updates) {
+  const updatesById = new Map(normalizeMemoryItems(updates).map((item) => [item.id, item]));
+  return normalizeMemoryItems(items).map((item) => {
+    const update = updatesById.get(item.id);
+    if (!update || update.hash !== item.hash || !update.embedding?.length) return item;
+    return normalizeMemoryItem({
+      ...item,
+      embedding: update.embedding,
+      embeddingModel: update.embeddingModel,
+      embeddingHash: update.embeddingHash,
+      embeddingUpdatedAt: update.embeddingUpdatedAt
+    });
+  });
 }
 
 export function mergeCandidateMemories(existingItems, candidateItems, now = new Date().toISOString()) {
@@ -499,6 +563,28 @@ function countKeywordHits(queryTokens, itemTokens) {
     if (itemTokens.has(token)) hits += 1;
   }
   return hits;
+}
+
+export function cosineSimilarity(a, b) {
+  const left = normalizeEmbedding(a);
+  const right = normalizeEmbedding(b);
+  if (!left.length || left.length !== right.length) return null;
+  let dot = 0;
+  let leftMagnitude = 0;
+  let rightMagnitude = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    dot += left[index] * right[index];
+    leftMagnitude += left[index] ** 2;
+    rightMagnitude += right[index] ** 2;
+  }
+  if (!leftMagnitude || !rightMagnitude) return null;
+  return dot / (Math.sqrt(leftMagnitude) * Math.sqrt(rightMagnitude));
+}
+
+function normalizeEmbedding(value) {
+  if (!Array.isArray(value)) return [];
+  const embedding = value.map(Number);
+  return embedding.length && embedding.every(Number.isFinite) ? embedding : [];
 }
 
 function recencyBoost(updatedAt) {

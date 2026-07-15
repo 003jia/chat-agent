@@ -143,6 +143,7 @@ export const copy = {
     model: {
       providerTitle: "模型供应商",
       model: "模型",
+      embeddingModel: "Embedding 模型（可选）",
       contextLength: "上下文长度",
       contextPresetLabel: "上下文长度快捷设置",
       apiKeyConfiguredPlaceholder: "已配置，点击输入新 Key 替换",
@@ -392,6 +393,7 @@ export const copy = {
     model: {
       providerTitle: "Model Provider",
       model: "Model",
+      embeddingModel: "Embedding Model (Optional)",
       contextLength: "Context Length",
       contextPresetLabel: "Context length presets",
       apiKeyConfiguredPlaceholder: "Configured. Type a new key to replace it.",

@@ -341,6 +341,15 @@ export function ModelSettings({ agentConfig, modelConfig, saveModel, testModel, 
         <input value={provider.model} onChange={(event) => patchProvider({ model: event.target.value })} />
       </label>
       <label>
+        {text.model.embeddingModel}
+        <input
+          value={provider.embeddingModel || ""}
+          placeholder={modelConfig.selectedProvider === "anthropic" ? "Not supported" : "text-embedding-3-small"}
+          disabled={modelConfig.selectedProvider === "anthropic"}
+          onChange={(event) => patchProvider({ embeddingModel: event.target.value })}
+        />
+      </label>
+      <label>
         {text.model.contextLength}
         <input
           type="number"

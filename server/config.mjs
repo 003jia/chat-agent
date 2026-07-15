@@ -47,6 +47,7 @@ export const defaultModelConfig = {
       baseURL: "https://api.openai.com/v1",
       apiKey: "",
       model: "gpt-4.1-mini",
+      embeddingModel: "",
       contextLength: DEFAULT_CONTEXT_LENGTH,
       status: "missing"
     },
@@ -56,6 +57,7 @@ export const defaultModelConfig = {
       baseURL: "https://api.openai.com/v1",
       apiKey: "",
       model: "gpt-4.1-mini",
+      embeddingModel: "",
       contextLength: DEFAULT_CONTEXT_LENGTH,
       status: "missing"
     },
@@ -65,6 +67,7 @@ export const defaultModelConfig = {
       baseURL: "https://api.deepseek.com/v1",
       apiKey: "",
       model: "deepseek-chat",
+      embeddingModel: "",
       contextLength: DEFAULT_CONTEXT_LENGTH,
       status: "missing"
     },
@@ -74,6 +77,7 @@ export const defaultModelConfig = {
       baseURL: "https://api.anthropic.com/v1",
       apiKey: "",
       model: "claude-3-5-sonnet-latest",
+      embeddingModel: "",
       contextLength: DEFAULT_CONTEXT_LENGTH,
       status: "missing"
     }
@@ -98,6 +102,7 @@ export function normalizeModelConfig(config, env = process.env) {
       ...provider,
       apiKey: envApiKey || provider.apiKey || defaultProvider.apiKey,
       apiKeySource: envApiKey ? "env" : provider.apiKey ? "file" : "none",
+      embeddingModel: String(provider.embeddingModel || defaultProvider.embeddingModel || "").trim(),
       contextLength: Math.max(1000, Number(provider.contextLength || defaultProvider.contextLength || DEFAULT_CONTEXT_LENGTH))
     };
   }

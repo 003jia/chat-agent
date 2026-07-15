@@ -15,6 +15,7 @@ import {
   HISTORY_CHAR_BUDGET_MIN,
   HISTORY_TOKEN_BUDGET_RATIO,
   MAX_CHAT_MESSAGE_LENGTH,
+  MEMORY_EMBEDDING_BATCH_LIMIT,
   PORT,
   WRITE_RATE_LIMIT_MAX,
   WRITE_RATE_LIMIT_WINDOW_MS
@@ -25,13 +26,16 @@ import { apiError } from "./errors.mjs";
 import { createId } from "./ids.mjs";
 import { createMutex } from "./lock.mjs";
 import { logError } from "./logger.mjs";
-import { callModel, streamModelDeltas } from "./model.mjs";
+import { callEmbeddings, callModel, streamModelDeltas } from "./model.mjs";
 import {
+  attachMemoryEmbedding,
   commitMemoryItems,
   createLocalOrganizeCandidates,
   extractCandidatesWithModel,
   generateCandidatesFromMessages,
   mergeCandidateMemories,
+  mergeMemoryEmbeddingUpdates,
+  needsMemoryEmbedding,
   normalizeMemoryItems,
   organizeMemoryWithModel,
   organizeMemoryItems,
@@ -58,6 +62,7 @@ export function createApp(options = {}) {
   const env = options.env || process.env;
   const logger = options.logger || console;
   const modelClient = {
+    callEmbeddings,
     callModel,
     streamModelDeltas,
     extractCandidatesWithModel,
@@ -224,6 +229,71 @@ export function createApp(options = {}) {
     });
   }
 
+  async function getSelectedProviderOptional() {
+    try {
+      const modelConfig = normalizeModelConfig(await readJson(path.join(configDir, "models.json"), defaultModelConfig), env);
+      return providerFromConfig(modelConfig);
+    } catch {
+      return null;
+    }
+  }
+
+  async function retrieveRelevantMemories(content, memoryItems, provider, strictRetrieval) {
+    const embeddingModel = String(provider.embeddingModel || "").trim();
+    if (!embeddingModel || provider.id === "anthropic") {
+      return selectRelevantMemories(content, memoryItems, strictRetrieval);
+    }
+    const missing = memoryItems
+      .filter((item) => needsMemoryEmbedding(item, embeddingModel))
+      .slice(0, Math.max(0, MEMORY_EMBEDDING_BATCH_LIMIT - 1));
+    try {
+      const vectors = await modelClient.callEmbeddings(provider, [content, ...missing.map((item) => item.content)]);
+      const queryEmbedding = vectors[0];
+      const now = new Date().toISOString();
+      const updates = missing.map((item, index) => attachMemoryEmbedding(item, vectors[index + 1], embeddingModel, now));
+      const retrievalItems = updates.length ? mergeMemoryEmbeddingUpdates(memoryItems, updates) : memoryItems;
+      if (updates.length) {
+        await memoryWriteLock(async () => {
+          const current = await getMemoryIndex();
+          await saveMemoryIndexOnly(mergeMemoryEmbeddingUpdates(current, updates));
+        });
+      }
+      return selectRelevantMemories(content, retrievalItems, strictRetrieval, { queryEmbedding, embeddingModel });
+    } catch (error) {
+      logError(logger, error, { operation: "memory-semantic-retrieval", provider: provider.id });
+      return selectRelevantMemories(content, memoryItems, strictRetrieval);
+    }
+  }
+
+  function queueMemoryEmbeddingRefresh(memoryIds) {
+    const ids = new Set(memoryIds || []);
+    if (!ids.size) return;
+    const task = (async () => {
+      const provider = await getSelectedProviderOptional();
+      const embeddingModel = String(provider?.embeddingModel || "").trim();
+      if (!provider || !embeddingModel || provider.id === "anthropic") return;
+      const current = await getMemoryIndex();
+      const targets = current
+        .filter((item) => ids.has(item.id) && needsMemoryEmbedding(item, embeddingModel))
+        .slice(0, MEMORY_EMBEDDING_BATCH_LIMIT);
+      if (!targets.length) return;
+      const vectors = await modelClient.callEmbeddings(provider, targets.map((item) => item.content));
+      const now = new Date().toISOString();
+      const updates = targets.map((item, index) => attachMemoryEmbedding(item, vectors[index], embeddingModel, now));
+      await memoryWriteLock(async () => {
+        const latest = await getMemoryIndex();
+        await saveMemoryIndexOnly(mergeMemoryEmbeddingUpdates(latest, updates));
+      });
+    })()
+      .catch((error) => {
+        logError(logger, error, { operation: "memory-embedding-refresh" });
+      })
+      .finally(() => {
+        backgroundTasks.delete(task);
+      });
+    backgroundTasks.add(task);
+  }
+
   async function getConversation(conversationId = "default") {
     const conversation = await readJson(path.join(conversationsDir, `${conversationId}.json`), null);
     if (conversation) return conversation;
@@ -333,7 +403,7 @@ export function createApp(options = {}) {
       memoryRefs: [],
       candidateMemoryIds: []
     };
-    const relevantMemories = selectRelevantMemories(content, memoryItems, agentConfig.behavior.strictRetrieval);
+    const relevantMemories = await retrieveRelevantMemories(content, memoryItems, provider, agentConfig.behavior.strictRetrieval);
     await recordMemoryAccess(relevantMemories.map((item) => item.id));
     const modelMessages = [
       { role: "system", content: buildSystemPrompt(agentConfig, relevantMemories, mode, webSearch, webSearchError) },
@@ -529,12 +599,19 @@ export function createApp(options = {}) {
       const modelConfig = normalizeModelConfig(await readJson(path.join(configDir, "models.json"), defaultModelConfig), env);
       const provider = providerFromConfig(modelConfig);
       const content = await modelClient.callModel(provider, [{ role: "user", content: "Reply with OK." }], 0);
+      if (provider.embeddingModel) {
+        await modelClient.callEmbeddings(provider, ["memory retrieval connection test"]);
+      }
       const fileModelConfig = normalizeModelConfig(await readJson(path.join(configDir, "models.json"), defaultModelConfig), {});
       if (fileModelConfig.providers[modelConfig.selectedProvider]) {
         fileModelConfig.providers[modelConfig.selectedProvider].status = "ready";
         await writeJson(path.join(configDir, "models.json"), stripRuntimeModelConfig(fileModelConfig));
       }
-      response.json({ ok: true, message: content.trim().slice(0, 120) || "OK" });
+      response.json({
+        ok: true,
+        message: content.trim().slice(0, 120) || "OK",
+        embeddingReady: Boolean(provider.embeddingModel)
+      });
     } catch (error) {
       next(error);
     }
@@ -725,6 +802,7 @@ export function createApp(options = {}) {
         await saveMemoryIndex(items);
         return { items, committed, rawPath };
       });
+      queueMemoryEmbeddingRefresh(result.committed.filter((item) => item.status === "active").map((item) => item.id));
       response.json(result);
     } catch (error) {
       next(error);
@@ -740,6 +818,7 @@ export function createApp(options = {}) {
         await saveMemoryIndex(items);
         return { items, item: items.find((entry) => entry.id === request.params.memoryId) };
       });
+      if (result.item?.status === "active") queueMemoryEmbeddingRefresh([result.item.id]);
       response.json(result);
     } catch (error) {
       next(error);

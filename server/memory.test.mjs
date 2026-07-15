@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commitMemoryItems, createLocalOrganizeCandidates, generateCandidatesFromMessages, mergeCandidateMemories, selectRelevantMemories, tokenizeMemoryText } from "./memory.mjs";
+import { attachMemoryEmbedding, commitMemoryItems, createLocalOrganizeCandidates, generateCandidatesFromMessages, mergeCandidateMemories, needsMemoryEmbedding, normalizeMemoryItem, selectRelevantMemories, tokenizeMemoryText } from "./memory.mjs";
 
 describe("selectRelevantMemories", () => {
   it("only returns memories that match at least one keyword", () => {
@@ -51,6 +51,47 @@ describe("selectRelevantMemories", () => {
     }));
 
     expect(selectRelevantMemories("memory", memories, true)).toHaveLength(5);
+  });
+
+  it("recalls a semantically similar memory without keyword overlap", () => {
+    const embedded = attachMemoryEmbedding({
+      id: "theme",
+      content: "用户偏好深色主题",
+      type: "user_preference",
+      level: "medium",
+      status: "active"
+    }, [1, 0], "test-embedding");
+    const unrelated = attachMemoryEmbedding({
+      id: "api",
+      content: "API Key 使用环境变量",
+      type: "project_fact",
+      level: "medium",
+      status: "active"
+    }, [0, 1], "test-embedding");
+
+    const result = selectRelevantMemories("界面风格建议", [embedded, unrelated], false, {
+      queryEmbedding: [0.98, 0.02],
+      embeddingModel: "test-embedding",
+      semanticThreshold: 0.8
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["theme"]);
+    expect(result[0].retrieval.mode).toBe("semantic");
+    expect(result[0].retrieval.semanticSimilarity).toBeGreaterThan(0.99);
+  });
+
+  it("invalidates a cached embedding when memory content changes", () => {
+    const embedded = attachMemoryEmbedding({
+      id: "theme",
+      content: "用户偏好深色主题",
+      type: "user_preference",
+      level: "medium",
+      status: "active"
+    }, [1, 0], "test-embedding");
+    const changed = normalizeMemoryItem({ ...embedded, content: "用户改为偏好浅色主题" });
+
+    expect(changed.embedding).toBeUndefined();
+    expect(needsMemoryEmbedding(changed, "test-embedding")).toBe(true);
   });
 });
 

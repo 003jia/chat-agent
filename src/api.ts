@@ -65,7 +65,7 @@ export const api = {
       body: JSON.stringify(config)
     }),
   testModel: () =>
-    request<{ ok: true; message: string }>("/api/model/test", {
+    request<{ ok: true; message: string; embeddingReady?: boolean }>("/api/model/test", {
       method: "POST",
       body: JSON.stringify({})
     }),

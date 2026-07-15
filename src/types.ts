@@ -32,6 +32,7 @@ export interface ModelProviderConfig {
   apiKeySource?: "env" | "file" | "none";
   apiKeyPreview?: string;
   model: string;
+  embeddingModel?: string;
   contextLength: number;
   status: "missing" | "ready" | "error";
 }
@@ -87,10 +88,16 @@ export interface MemoryItem {
   supersededBy?: string;
   confidence?: number;
   reason?: string;
+  embedding?: number[];
+  embeddingModel?: string;
+  embeddingHash?: string;
+  embeddingUpdatedAt?: string;
   retrieval?: {
     score: number | null;
     keywordHits: number | null;
     resident: boolean;
+    semanticSimilarity?: number | null;
+    mode?: "resident" | "keyword" | "semantic" | "hybrid";
   };
 }
 

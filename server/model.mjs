@@ -30,6 +30,49 @@ export async function callModelJson(provider, messages, temperature = 0) {
   }
 }
 
+export async function callEmbeddings(provider, inputs) {
+  const values = (Array.isArray(inputs) ? inputs : [inputs]).map((value) => String(value || "").trim()).filter(Boolean);
+  if (!values.length) return [];
+  if (!provider.embeddingModel) {
+    throw apiError(400, "EMBEDDING_NOT_CONFIGURED", "当前供应商未配置 Embedding 模型。");
+  }
+  if (provider.id === "anthropic") {
+    throw apiError(400, "EMBEDDING_NOT_SUPPORTED", "Anthropic 配置不提供 OpenAI-compatible Embedding 接口。");
+  }
+  try {
+    const response = await fetchWithTimeout(
+      `${normalizeBaseURL(provider.baseURL)}/embeddings`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${provider.apiKey}`
+        },
+        body: JSON.stringify({ model: provider.embeddingModel, input: values })
+      },
+      MODEL_TIMEOUT_MS
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw classifyProviderError(response.status, payload?.error?.message || payload?.message);
+    }
+    const rows = Array.isArray(payload?.data) ? [...payload.data].sort((a, b) => Number(a.index) - Number(b.index)) : [];
+    const embeddings = rows.map((row) => normalizeEmbedding(row?.embedding));
+    if (embeddings.length !== values.length || embeddings.some((embedding) => !embedding.length)) {
+      throw apiError(502, "EMBEDDING_RESPONSE_ERROR", "Embedding 接口返回格式异常。");
+    }
+    return embeddings;
+  } catch (error) {
+    throw mapModelError(error);
+  }
+}
+
+function normalizeEmbedding(value) {
+  if (!Array.isArray(value)) return [];
+  const embedding = value.map(Number);
+  return embedding.length && embedding.every(Number.isFinite) ? embedding : [];
+}
+
 async function callOpenAICompatible(provider, messages, temperature, options = {}) {
   const response = await fetchWithTimeout(
     `${normalizeBaseURL(provider.baseURL)}/chat/completions`,

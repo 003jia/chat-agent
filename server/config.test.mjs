@@ -8,6 +8,7 @@ describe("normalizeModelConfig", () => {
       providers: {
         deepseek: {
           apiKey: "file-key",
+          embeddingModel: "embed-v1",
           contextLength: 64
         }
       }
@@ -16,6 +17,7 @@ describe("normalizeModelConfig", () => {
     expect(config.selectedProvider).toBe("deepseek");
     expect(config.providers.deepseek.apiKey).toBe("file-key");
     expect(config.providers.deepseek.apiKeySource).toBe("file");
+    expect(config.providers.deepseek.embeddingModel).toBe("embed-v1");
     expect(config.providers.deepseek.contextLength).toBe(1000);
     expect(config.providers.openai.contextLength).toBe(DEFAULT_CONTEXT_LENGTH);
   });
