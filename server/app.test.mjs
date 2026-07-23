@@ -351,7 +351,7 @@ describe("createApp API smoke", () => {
       body: { name: "Coach", roleTitle: "教练", roleDescription: "鼓励式反馈" }
     });
     expect(created.status).toBe(201);
-    expect(created.json.roles).toHaveLength(2);
+    expect(created.json.roles).toHaveLength(3);
     const newRoleId = created.json.roles.find((role) => role.name === "Coach").id;
 
     const selected = await invokeApp(server.app, {
@@ -377,6 +377,148 @@ describe("createApp API smoke", () => {
     });
     expect(deleted.status).toBe(200);
     expect(deleted.json.roles.find((role) => role.id === newRoleId)).toBeUndefined();
+  });
+
+  it("uploads, serves, and resets a role background image", async () => {
+    const server = await createTestApp();
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x01]);
+    const unauthorized = await invokeApp(server.app, {
+      method: "PUT",
+      url: "/api/roles/role-default/background",
+      headers: { "Content-Type": "image/png" },
+      body: png
+    });
+    expect(unauthorized.status).toBe(401);
+    expect(unauthorized.json.code).toBe("AUTH_REQUIRED");
+
+    const uploaded = await invokeApp(server.app, {
+      method: "PUT",
+      url: "/api/roles/role-default/background",
+      headers: { "Content-Type": "image/png", "X-Admin-Token": "secret" },
+      body: png
+    });
+    const uploadedRole = uploaded.json.roles.find((role) => role.id === "role-default");
+    expect(uploaded.status).toBe(200);
+    expect(uploadedRole.backgroundMime).toBe("image/png");
+    expect(uploadedRole.backgroundImage).toContain("/api/roles/role-default/background?v=");
+
+    const image = await invokeApp(server.app, {
+      method: "GET",
+      url: "/api/roles/role-default/background"
+    });
+    expect(image.status).toBe(200);
+    expect(image.headers["content-type"]).toContain("image/png");
+    expect(image.body.equals(png)).toBe(true);
+
+    const reset = await invokeApp(server.app, {
+      method: "DELETE",
+      url: "/api/roles/role-default/background",
+      headers: { "X-Admin-Token": "secret" }
+    });
+    expect(reset.status).toBe(200);
+    expect(reset.json.roles.find((role) => role.id === "role-default").backgroundImage).toBeUndefined();
+
+    const missing = await invokeApp(server.app, {
+      method: "GET",
+      url: "/api/roles/role-default/background"
+    });
+    expect(missing.status).toBe(404);
+    expect(missing.json.code).toBe("BACKGROUND_NOT_FOUND");
+  });
+
+  it("creates and updates an expert team with selective role membership", async () => {
+    const server = await createTestApp();
+    const headers = { "X-Admin-Token": "secret" };
+    const created = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/teams",
+      headers,
+      body: {
+        name: "研发专家团",
+        goal: "完成产品研发",
+        enabled: true,
+        leadRoleId: "role-expert-team-author",
+        memberRoleIds: ["role-default", "role-expert-team-author"]
+      }
+    });
+
+    expect(created.status).toBe(201);
+    expect(created.json.teams).toHaveLength(1);
+    const team = created.json.teams[0];
+    expect(team.memberRoleIds).toEqual(["role-default", "role-expert-team-author"]);
+    expect(team.leadRoleId).toBe("role-expert-team-author");
+
+    const updated = await invokeApp(server.app, {
+      method: "PUT",
+      url: `/api/teams/${team.id}`,
+      headers,
+      body: {
+        name: "精简研发团",
+        goal: "只保留架构角色",
+        enabled: false,
+        leadRoleId: "role-expert-team-author",
+        memberRoleIds: ["role-expert-team-author"]
+      }
+    });
+
+    expect(updated.status).toBe(200);
+    expect(updated.json.teams[0]).toMatchObject({
+      name: "精简研发团",
+      enabled: false,
+      memberRoleIds: ["role-expert-team-author"]
+    });
+  });
+
+  it("rejects a team whose lead has not joined", async () => {
+    const server = await createTestApp();
+    const response = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/teams",
+      headers: { "X-Admin-Token": "secret" },
+      body: {
+        name: "无效专家团",
+        leadRoleId: "role-expert-team-author",
+        memberRoleIds: ["role-default"]
+      }
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.json.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("rejects a background whose content does not match its image type", async () => {
+    const server = await createTestApp();
+    const response = await invokeApp(server.app, {
+      method: "PUT",
+      url: "/api/roles/role-default/background",
+      headers: { "Content-Type": "image/png", "X-Admin-Token": "secret" },
+      body: Buffer.from("not a png")
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.json.code).toBe("INVALID_IMAGE");
+  });
+
+  it("exposes and protects the built-in expert-team role", async () => {
+    const server = await createTestApp();
+    const roles = await invokeApp(server.app, { method: "GET", url: "/api/roles" });
+    const expertRole = roles.json.roles.find((role) => role.id === "role-expert-team-author");
+
+    expect(expertRole).toMatchObject({
+      name: "专家团架构师",
+      builtIn: true,
+      capabilityIds: ["expert-team-authoring"]
+    });
+    expect(expertRole.quickPrompts).toHaveLength(3);
+
+    const deleted = await invokeApp(server.app, {
+      method: "DELETE",
+      url: "/api/roles/role-expert-team-author",
+      headers: { "X-Admin-Token": "secret" }
+    });
+
+    expect(deleted.status).toBe(400);
+    expect(deleted.json.code).toBe("ROLE_PROTECTED");
   });
 
   it("supports listing, creating, and switching conversations", async () => {
@@ -455,8 +597,9 @@ function invokeApp(app, options) {
     const headers = normalizeHeaders(options.headers || {});
     let payload = null;
     if (options.body !== undefined) {
-      payload = Buffer.from(JSON.stringify(options.body));
-      headers["content-type"] = headers["content-type"] || "application/json";
+      const binaryBody = Buffer.isBuffer(options.body) || options.body instanceof Uint8Array;
+      payload = binaryBody ? Buffer.from(options.body) : Buffer.from(JSON.stringify(options.body));
+      headers["content-type"] = headers["content-type"] || (binaryBody ? "application/octet-stream" : "application/json");
       headers["content-length"] = String(payload.length);
     }
 
@@ -502,14 +645,15 @@ function invokeApp(app, options) {
     };
     response.end = (chunk, encoding, callback) => {
       if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, typeof encoding === "string" ? encoding : undefined));
-      const text = Buffer.concat(chunks).toString("utf8");
+      const body = Buffer.concat(chunks);
+      const text = body.toString("utf8");
       let json = null;
       try {
         json = text ? JSON.parse(text) : null;
       } catch {
         json = null;
       }
-      resolve({ status: response.statusCode, headers: responseHeaders, text, json });
+      resolve({ status: response.statusCode, headers: responseHeaders, body, text, json });
       if (typeof callback === "function") callback();
       return response;
     };

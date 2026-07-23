@@ -8,6 +8,16 @@ export interface AgentConfig {
   name: string;
   roleTitle: string;
   roleDescription: string;
+  avatar?: string;
+  accentColor?: string;
+  backgroundImage?: string;
+  backgroundMime?: "image/jpeg" | "image/png" | "image/webp";
+  backgroundUpdatedAt?: string;
+  personalityTone?: string;
+  greeting?: string;
+  capabilityIds?: string[];
+  quickPrompts?: string[];
+  builtIn?: boolean;
   language: "zh" | "en";
   temperature: number;
   behavior: {
@@ -21,6 +31,22 @@ export interface AgentConfig {
 export interface RoleStore {
   selectedRoleId: string;
   roles: AgentConfig[];
+}
+
+export interface ExpertTeam {
+  id: string;
+  name: string;
+  goal: string;
+  enabled: boolean;
+  leadRoleId: string | null;
+  memberRoleIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExpertTeamStore {
+  selectedTeamId: string | null;
+  teams: ExpertTeam[];
 }
 
 export interface ModelProviderConfig {

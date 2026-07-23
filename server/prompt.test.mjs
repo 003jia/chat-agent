@@ -65,4 +65,68 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("<long_term_memory>");
     expect(prompt).toContain("<untrusted_web_results>");
   });
+
+  it("uses warm/natural language for citeMemory=true (P0-5)", () => {
+    const prompt = buildSystemPrompt(
+      {
+        name: "Agent",
+        roleTitle: "助理",
+        roleDescription: "回答问题。",
+        behavior: { proactiveFollowup: true, citeMemory: true, strictRetrieval: false }
+      },
+      [],
+      "normal"
+    );
+
+    expect(prompt).toContain("自然的语气融入回复");
+    expect(prompt).toContain("我记得你之前提到过");
+    expect(prompt).toContain("不需要标注");
+    expect(prompt).not.toContain("显式引用记忆编号");
+  });
+
+  it("instructs no explicit memory references for citeMemory=false (P0-5)", () => {
+    const prompt = buildSystemPrompt(
+      {
+        name: "Agent",
+        roleTitle: "助理",
+        roleDescription: "回答问题。",
+        behavior: { proactiveFollowup: true, citeMemory: false, strictRetrieval: false }
+      },
+      [],
+      "normal"
+    );
+
+    expect(prompt).toContain("不要在回答里显式引用记忆编号或标签");
+    expect(prompt).not.toContain("自然的语气融入回复");
+  });
+
+  it("loads the expert-team authoring protocol only for enabled roles", () => {
+    const expertPrompt = buildSystemPrompt(
+      {
+        name: "专家团架构师",
+        roleTitle: "Comate 专家团架构师",
+        roleDescription: "设计和审查专家团。",
+        capabilityIds: ["expert-team-authoring"],
+        behavior: { proactiveFollowup: true, citeMemory: false, strictRetrieval: true }
+      },
+      [],
+      "normal"
+    );
+    const regularPrompt = buildSystemPrompt(
+      {
+        name: "Agent",
+        roleTitle: "助理",
+        roleDescription: "回答问题。",
+        behavior: { proactiveFollowup: true, citeMemory: false, strictRetrieval: false }
+      },
+      [],
+      "normal"
+    );
+
+    expect(expertPrompt).toContain("已启用能力协议");
+    expect(expertPrompt).toContain("唯一 Lead Agent");
+    expect(expertPrompt).toContain("不得声称已经运行真实子 Agent");
+    expect(expertPrompt).toContain("needs_user");
+    expect(regularPrompt).not.toContain("已启用能力协议");
+  });
 });

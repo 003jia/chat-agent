@@ -1,4 +1,4 @@
-import type { AgentConfig, ChatResponse, Conversation, ConversationSummary, MemoryItem, MemoryState, ModelConfig, RoleStore, WebSearchResponse } from "./types";
+import type { AgentConfig, ChatResponse, Conversation, ConversationSummary, ExpertTeam, ExpertTeamStore, MemoryItem, MemoryState, ModelConfig, RoleStore, WebSearchResponse } from "./types";
 
 const adminTokenStorageKey = "memory-agent-admin-token";
 
@@ -38,6 +38,26 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return payload as T;
 }
 
+async function requestFile<T>(url: string, file: File): Promise<T> {
+  const adminToken = getAdminToken();
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": file.type,
+      ...(adminToken ? { "X-Admin-Token": adminToken } : {})
+    },
+    body: file
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload?.message || "上传失败。") as Error & { code?: string; detail?: string };
+    error.code = payload?.code;
+    error.detail = payload?.detail;
+    throw error;
+  }
+  return payload as T;
+}
+
 export const api = {
   getRoles: () => request<RoleStore>("/api/roles"),
   createRole: (role: Partial<AgentConfig>) =>
@@ -50,6 +70,12 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(role)
     }),
+  uploadRoleBackground: (roleId: string, file: File) =>
+    requestFile<RoleStore>(`/api/roles/${roleId}/background`, file),
+  resetRoleBackground: (roleId: string) =>
+    request<RoleStore>(`/api/roles/${roleId}/background`, {
+      method: "DELETE"
+    }),
   deleteRole: (roleId: string) =>
     request<RoleStore>(`/api/roles/${roleId}`, {
       method: "DELETE"
@@ -57,6 +83,25 @@ export const api = {
   selectRole: (roleId: string) =>
     request<RoleStore>(`/api/roles/${roleId}/select`, {
       method: "PUT"
+    }),
+  getTeams: () => request<ExpertTeamStore>("/api/teams"),
+  createTeam: (team: Pick<ExpertTeam, "name" | "goal" | "enabled" | "leadRoleId" | "memberRoleIds">) =>
+    request<ExpertTeamStore>("/api/teams", {
+      method: "POST",
+      body: JSON.stringify(team)
+    }),
+  updateTeam: (teamId: string, team: Pick<ExpertTeam, "name" | "goal" | "enabled" | "leadRoleId" | "memberRoleIds">) =>
+    request<ExpertTeamStore>(`/api/teams/${teamId}`, {
+      method: "PUT",
+      body: JSON.stringify(team)
+    }),
+  selectTeam: (teamId: string) =>
+    request<ExpertTeamStore>(`/api/teams/${teamId}/select`, {
+      method: "PUT"
+    }),
+  deleteTeam: (teamId: string) =>
+    request<ExpertTeamStore>(`/api/teams/${teamId}`, {
+      method: "DELETE"
     }),
   getModelConfig: () => request<ModelConfig>("/api/model-config"),
   saveModelConfig: (config: ModelConfig) =>
@@ -141,6 +186,11 @@ export const api = {
     }),
   organizeMemory: () =>
     request<{ items: MemoryItem[]; candidates: MemoryItem[]; markdown: string; mode: string; organizeError?: { code: string; message: string } | null }>("/api/memory/organize", {
+      method: "POST",
+      body: JSON.stringify({})
+    }),
+  generateSummary: (conversationId = "default") =>
+    request<{ summary: string }>(`/api/conversations/${conversationId}/summary`, {
       method: "POST",
       body: JSON.stringify({})
     })

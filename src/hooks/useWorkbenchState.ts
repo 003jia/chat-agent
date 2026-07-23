@@ -1,13 +1,14 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { api, getAdminToken, setAdminToken } from "../api";
 import { getUiText } from "../i18n";
-import type { AgentConfig, ApiWarning, ChatMessage, Conversation, ConversationSummary, MemoryItem, MemoryState, ModelConfig, RoleStore, WebSearchResponse } from "../types";
+import type { AgentConfig, ApiWarning, ChatMessage, Conversation, ConversationSummary, ExpertTeam, ExpertTeamStore, MemoryItem, MemoryState, ModelConfig, RoleStore, WebSearchResponse } from "../types";
 import type { ActivePanel, BusyAction, ChatMode, PanelPhase, WorkbenchProps } from "../workbenchTypes";
 
 const panelMotionMs = 240;
 
 export function useWorkbenchState() {
   const [roleStore, setRoleStore] = useState<RoleStore | null>(null);
+  const [teamStore, setTeamStore] = useState<ExpertTeamStore | null>(null);
   const [modelConfig, setModelConfig] = useState<ModelConfig | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -17,6 +18,7 @@ export function useWorkbenchState() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [status, setStatus] = useState("就绪");
   const [error, setError] = useState("");
   const [adminToken, setAdminTokenState] = useState(() => getAdminToken());
@@ -38,8 +40,9 @@ export function useWorkbenchState() {
     let mounted = true;
     async function boot() {
       try {
-        const [roles, model, activeConversation, conversationList, memory] = await Promise.all([
+        const [roles, teams, model, activeConversation, conversationList, memory] = await Promise.all([
           api.getRoles(),
+          api.getTeams(),
           api.getModelConfig(),
           api.getConversation(),
           api.listConversations(),
@@ -47,7 +50,21 @@ export function useWorkbenchState() {
         ]);
         if (!mounted) return;
         setRoleStore(roles);
+        setTeamStore(teams);
         setModelConfig(model);
+        // Inject greeting for empty conversation on boot
+        if (!activeConversation.messages.length) {
+          const bootRole = roles.roles.find((role) => role.id === activeConversation.roleId) || roles.roles[0];
+          const greetingText = bootRole?.greeting || (bootRole?.language === "en" ? getUiText("en").companion.greeting.default : getUiText("zh").companion.greeting.default);
+          activeConversation.messages.push({
+            id: `local-greeting-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+            role: "assistant",
+            content: greetingText,
+            timestamp: new Date().toISOString(),
+            memoryRefs: [],
+            candidateMemoryIds: []
+          });
+        }
         setConversation(activeConversation);
         setConversations(conversationList.conversations);
         setMemoryState(memory);
@@ -89,6 +106,24 @@ export function useWorkbenchState() {
     setStatusKey((key) => key + 1);
   }, [agentConfig?.language]);
 
+  useEffect(() => {
+    if (!agentConfig?.accentColor) return;
+    document.documentElement.style.setProperty("--accent", agentConfig.accentColor);
+  }, [agentConfig?.accentColor]);
+
+  useEffect(() => {
+    if (agentConfig?.backgroundImage) {
+      document.documentElement.style.setProperty("--app-background-image", `url(${JSON.stringify(agentConfig.backgroundImage)})`);
+      return;
+    }
+    document.documentElement.style.removeProperty("--app-background-image");
+  }, [agentConfig?.backgroundImage]);
+
+  // Inject default accent color on boot
+  useEffect(() => {
+    document.documentElement.style.setProperty("--accent", agentConfig?.accentColor || "#6366f1");
+  }, []);
+
   function updateAdminToken(value: string) {
     setAdminToken(value);
     setAdminTokenState(value.trim());
@@ -111,6 +146,40 @@ export function useWorkbenchState() {
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function uploadRoleBackground(file: File) {
+    if (!agentConfig) return;
+    setSaving(true);
+    setBusyAction("role-save");
+    setError("");
+    try {
+      const saved = await api.uploadRoleBackground(agentConfig.id, file);
+      setRoleStore(saved);
+      showStatus(agentConfig.language === "en" ? "Background updated" : "背景已更新");
+    } catch (uploadError) {
+      setError(errorMessage(uploadError));
+    } finally {
+      setSaving(false);
+      setBusyAction(null);
+    }
+  }
+
+  async function resetRoleBackground() {
+    if (!agentConfig) return;
+    setSaving(true);
+    setBusyAction("role-save");
+    setError("");
+    try {
+      const saved = await api.resetRoleBackground(agentConfig.id);
+      setRoleStore(saved);
+      showStatus(agentConfig.language === "en" ? "Default background restored" : "已恢复默认蓝色背景");
+    } catch (resetError) {
+      setError(errorMessage(resetError));
+    } finally {
+      setSaving(false);
+      setBusyAction(null);
     }
   }
 
@@ -169,6 +238,59 @@ export function useWorkbenchState() {
     }
   }
 
+  async function createTeam(team: Pick<ExpertTeam, "name" | "goal" | "enabled" | "leadRoleId" | "memberRoleIds">) {
+    setSaving(true);
+    setBusyAction("team-save");
+    setError("");
+    try {
+      setTeamStore(await api.createTeam(team));
+      showStatus(agentConfig?.language === "en" ? "Expert team created" : "专家团已创建");
+    } catch (teamError) {
+      setError(errorMessage(teamError));
+    } finally {
+      setSaving(false);
+      setBusyAction(null);
+    }
+  }
+
+  async function updateTeam(teamId: string, team: Pick<ExpertTeam, "name" | "goal" | "enabled" | "leadRoleId" | "memberRoleIds">) {
+    setSaving(true);
+    setBusyAction("team-save");
+    setError("");
+    try {
+      setTeamStore(await api.updateTeam(teamId, team));
+      showStatus(agentConfig?.language === "en" ? "Expert team saved" : "专家团配置已保存");
+    } catch (teamError) {
+      setError(errorMessage(teamError));
+    } finally {
+      setSaving(false);
+      setBusyAction(null);
+    }
+  }
+
+  async function selectTeam(teamId: string) {
+    try {
+      setTeamStore(await api.selectTeam(teamId));
+    } catch (teamError) {
+      setError(errorMessage(teamError));
+    }
+  }
+
+  async function deleteTeam(teamId: string) {
+    setSaving(true);
+    setBusyAction("team-save");
+    setError("");
+    try {
+      setTeamStore(await api.deleteTeam(teamId));
+      showStatus(agentConfig?.language === "en" ? "Expert team deleted" : "专家团已删除");
+    } catch (teamError) {
+      setError(errorMessage(teamError));
+    } finally {
+      setSaving(false);
+      setBusyAction(null);
+    }
+  }
+
   async function setConversationRole(roleId: string) {
     if (!conversation) return;
     setSaving(true);
@@ -196,6 +318,19 @@ export function useWorkbenchState() {
     setBusyAction("conversation-switch");
     try {
       const created = await api.createConversation(options);
+      const activeRoleConfig = roleStore?.roles.find((role) => role.id === created.roleId) || agentConfig;
+      const greetingText = activeRoleConfig?.greeting || (activeRoleConfig?.language === "en" ? getUiText("en").companion.greeting.default : getUiText("zh").companion.greeting.default);
+      const hasMessages = created.messages && created.messages.length > 0;
+      if (!hasMessages && greetingText) {
+        created.messages.push({
+          id: `local-greeting-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+          role: "assistant",
+          content: greetingText,
+          timestamp: new Date().toISOString(),
+          memoryRefs: [],
+          candidateMemoryIds: []
+        });
+      }
       setConversation(created);
       setConversations(await refreshConversationList());
       setPendingCandidates([]);
@@ -579,19 +714,17 @@ export function useWorkbenchState() {
     if (mode === "web") openPanel("webSearch");
   }
 
-  function generateSummary() {
-    const messages = conversation?.messages.slice(-6) || [];
-    const summary = messages.length
-      ? [
-          agentConfig?.language === "en" ? `Conversation: ${conversation?.title || "Current chat"}` : `会话：${conversation?.title || "当前对话"}`,
-          agentConfig?.language === "en" ? `The latest ${messages.length} messages cover long-term memory, candidate review, and execution constraints.` : `最近 ${messages.length} 条消息围绕长期记忆、候选审核和执行约束展开。`,
-          agentConfig?.language === "en" ? `Latest user question: ${messages.filter((item) => item.role === "user").slice(-1)[0]?.content || "None"}` : `最新用户问题：${messages.filter((item) => item.role === "user").slice(-1)[0]?.content || "暂无"}`,
-          agentConfig?.language === "en" ? `Loaded memory: ${memoryState?.stats.loaded || 0}; memory candidates: ${pendingCandidates.length}.` : `当前已加载记忆：${memoryState?.stats.loaded || 0} 条；候选记忆：${pendingCandidates.length} 条。`
-        ].join("\n")
-      : agentConfig?.language === "en" ? "There is no conversation to summarize yet." : "当前没有可总结的对话。";
-    setGeneratedSummary(summary);
-    openPanel("summary");
-    notify(text.status.summaryGenerated);
+  async function generateSummary() {
+    if (!conversation) return;
+    try {
+      const result = await api.generateSummary(conversation.id);
+      setGeneratedSummary(result.summary);
+      openPanel("summary");
+      notify(text.status.summaryGenerated);
+    } catch (summaryError) {
+      setError(errorMessage(summaryError));
+      notify(agentConfig?.language === "en" ? "Failed to generate summary" : "摘要生成失败");
+    }
   }
 
   function saveSummaryCandidate() {
@@ -623,13 +756,75 @@ export function useWorkbenchState() {
     setMemoryPanelCollapsed((current) => !current);
   }
 
-  if (loading || !agentConfig || !roleStore || !modelConfig || !conversation || !memoryState || !selectedProvider) {
+  async function regenerateMessage() {
+    if (!conversation || isRegenerating) return;
+    const messages = conversation.messages;
+    const lastUserIndex = [...messages].reverse().findIndex((message) => message.role === "user");
+    if (lastUserIndex === -1) return;
+    const lastUserMsg = messages[messages.length - 1 - lastUserIndex];
+    if (!lastUserMsg.content.trim()) return;
+    setIsRegenerating(true);
+    setError("");
+    const activeConversation = conversation;
+    const localAssistantMessage = createLocalMessage("assistant", "");
+    const messagesWithoutLastAssistant = lastUserIndex === 0
+      ? messages.slice(0, -1)
+      : messages.slice(0, messages.length - lastUserIndex);
+    setConversation({
+      ...activeConversation,
+      messages: [...messagesWithoutLastAssistant, localAssistantMessage],
+      updatedAt: new Date().toISOString()
+    });
+    showStatus(text.status.streaming);
+    try {
+      const useWebSearch = activeMode === "web";
+      let serverReplyId = localAssistantMessage.id;
+      await api.streamChat(lastUserMsg.content, activeMode, useWebSearch, activeConversation.id, (eventName, data) => {
+        if (eventName === "message.delta") {
+          const payload = data as { delta?: string };
+          if (payload.delta) appendMessageDelta(activeConversation.id, serverReplyId, localAssistantMessage.id, payload.delta);
+          return;
+        }
+        if (eventName === "message.done") {
+          const payload = data as {
+            reply: ChatMessage;
+            conversation: Conversation;
+          };
+          serverReplyId = payload.reply.id;
+          setConversation(payload.conversation);
+          return;
+        }
+        if (eventName === "error") {
+          const payload = data as ApiWarning;
+          throw new Error(payload.message || text.status.streamFailed);
+        }
+      });
+      setConversations(await refreshConversationList());
+      showStatus(agentConfig?.language === "en" ? "Reply regenerated" : "回复已重新生成");
+    } catch (chatError) {
+      setError(errorMessage(chatError));
+    } finally {
+      setIsRegenerating(false);
+    }
+  }
+
+  async function copyMessage(content: string) {
+    try {
+      await navigator.clipboard.writeText(content);
+      notify(agentConfig?.language === "en" ? "Copied" : getUiText("zh").companion.copySuccess);
+    } catch {
+      notify("复制失败");
+    }
+  }
+
+  if (loading || !agentConfig || !roleStore || !teamStore || !modelConfig || !conversation || !memoryState || !selectedProvider) {
     return { loading: true as const };
   }
 
   const props: WorkbenchProps = {
     agentConfig,
     roleStore,
+    teamStore,
     modelConfig,
     selectedProvider,
     conversation,
@@ -655,9 +850,15 @@ export function useWorkbenchState() {
     setDraft,
     updateAdminToken,
     updateAgent,
+    uploadRoleBackground,
+    resetRoleBackground,
     createRole,
     deleteRole,
     selectRole,
+    createTeam,
+    updateTeam,
+    selectTeam,
+    deleteTeam,
     saveModel,
     testModel,
     sendMessage,
@@ -681,7 +882,10 @@ export function useWorkbenchState() {
     switchConversation,
     deleteConversation,
     setConversationRole,
-    toggleMemoryPanel
+    toggleMemoryPanel,
+    regenerateMessage,
+    copyMessage,
+    isRegenerating
   };
 
   return { loading: false as const, props, mobileView };

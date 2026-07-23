@@ -1,0 +1,90 @@
+classDiagram
+    direction LR
+
+    class AgentConfig {
+        +string id
+        +string name
+        +string roleTitle
+        +string roleDescription
+        +"zh"|"en" language
+        +number temperature
+        +Behavior behavior
+        +string avatar
+        +string accentColor
+        +string personalityTone
+        +string greeting
+    }
+    class Behavior {
+        +boolean proactiveFollowup
+        +boolean citeMemory
+        +boolean autoSaveNotes
+        +boolean strictRetrieval
+    }
+    class ChatMessage {
+        +string id
+        +"user"|"assistant"|"system" role
+        +string content
+        +string timestamp
+        +string[] memoryRefs
+        +string[] candidateMemoryIds
+        +boolean isGreeting
+    }
+    class Conversation {
+        +string id
+        +string title
+        +string roleId
+        +ChatMessage[] messages
+        +string createdAt
+        +string updatedAt
+        +string summary
+        +string summaryGeneratedAt
+        +string summaryModel
+    }
+    class RoleStore {
+        +string selectedRoleId
+        +AgentConfig[] roles
+    }
+    class WorkbenchState {
+        +agentConfig
+        +conversation
+        +openPanel(panel)
+        +closePanel()
+        +sendMessage()
+        +regenerate(msgId)
+        +copyMessage(content)
+        +updateAgent(cfg)
+        +applyAccentColor()
+    }
+
+    AgentConfig *-- Behavior
+    RoleStore o-- AgentConfig
+    Conversation o-- ChatMessage
+    WorkbenchState ..> AgentConfig
+    WorkbenchState ..> Conversation
+    WorkbenchState ..> RoleStore
+
+    class CreateApp {
+        +app
+        +ensureDataStore()
+    }
+    class SummaryRoute {
+        +POST /api/conversations/:id/summary
+    }
+    class SummaryService {
+        +buildSummaryPrompt(cfg, msgs, lang)
+        +generate(provider, msgs, lang, limit)
+    }
+    class PromptBuilder {
+        +buildSystemPrompt(cfg, memories, mode, web, err)
+        +formatMemoryBlock(memories)
+    }
+    class ConversationRepo {
+        +getConversation(id)
+        +saveConversation(conv)
+    }
+
+    CreateApp ..> SummaryRoute
+    SummaryRoute ..> SummaryService
+    SummaryService ..> PromptBuilder
+    SummaryService ..> ConversationRepo
+    ConversationRepo ..> Conversation

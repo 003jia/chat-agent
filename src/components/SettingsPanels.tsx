@@ -1,13 +1,82 @@
-import { Bot, CheckCircle2, ClipboardList, Database, FileText, Loader2, MessageSquarePlus, Plus, SlidersHorizontal, Sparkles, Trash2, X } from "lucide-react";
-import { useState, type FocusEvent, type MouseEvent } from "react";
+import { Bot, CheckCircle2, ClipboardList, Database, FileText, ImagePlus, Loader2, MessageSquarePlus, Plus, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Users, X } from "lucide-react";
+import { useRef, useState, type ChangeEvent, type FocusEvent, type MouseEvent } from "react";
 import { getUiText } from "../i18n";
 import type { ModelProviderConfig, ProviderId } from "../types";
 import type { WorkbenchProps } from "../workbenchTypes";
 import { InfoLine, MobileSettingRow, Stat, ToggleRow } from "./ui";
 
+const ACCENT_PRESETS = [
+  "#6366f1", "#8b5cf6", "#d946ef", "#ec4899",
+  "#f43f5e", "#ef4444", "#f97316", "#eab308",
+  "#84cc16", "#22c55e", "#14b8a6", "#06b6d4",
+  "#0ea5e9", "#3b82f6", "#6b7280", "#a8a29e",
+];
+
+const EMOJI_OPTIONS = ["🤖", "🧑‍💻", "👨‍🔬", "👩‍🎨", "🧙‍♂️", "🧝‍♀️", "🦊", "🐱", "🐶", "🐰", "🦋", "🌻", "⭐", "🎵", "📚", "🎮"];
+
 const contextLengthOptions = [32000, 64000, 128000];
 
-function RoleSwitcher({ roleStore, agentConfig, saving, busyAction, createRole, deleteRole, setConversationRole }: WorkbenchProps) {
+export function BackgroundSettings({
+  agentConfig,
+  saving,
+  busyAction,
+  uploadRoleBackground,
+  resetRoleBackground,
+  notify
+}: Pick<WorkbenchProps, "agentConfig" | "saving" | "busyAction" | "uploadRoleBackground" | "resetRoleBackground" | "notify">) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const text = getUiText(agentConfig.language);
+  const busy = saving && busyAction === "role-save";
+
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      notify(agentConfig.language === "en" ? "Choose a JPG, PNG or WebP image" : "请选择 JPG、PNG 或 WebP 图片");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      notify(agentConfig.language === "en" ? "Image must be 8 MB or smaller" : "图片大小不能超过 8 MB");
+      return;
+    }
+    await uploadRoleBackground(file);
+  }
+
+  return (
+    <div className="background-settings">
+      <div
+        className="background-preview"
+        role="img"
+        aria-label={agentConfig.backgroundImage ? text.persona.customBackground : text.persona.defaultBackground}
+      >
+        <span>{agentConfig.backgroundImage ? text.persona.customBackground : text.persona.defaultBackground}</span>
+      </div>
+      <input
+        ref={inputRef}
+        className="visually-hidden"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handleFileChange}
+      />
+      <div className="background-actions">
+        <button type="button" disabled={busy} onClick={() => inputRef.current?.click()}>
+          {busy ? <Loader2 size={15} className="spin" /> : <ImagePlus size={15} />}
+          {text.persona.uploadBackground}
+        </button>
+        {agentConfig.backgroundImage && (
+          <button type="button" className="secondary" disabled={busy} onClick={resetRoleBackground}>
+            <RotateCcw size={15} />
+            {text.persona.resetBackground}
+          </button>
+        )}
+      </div>
+      <small>{text.persona.backgroundHint}</small>
+    </div>
+  );
+}
+
+export function RoleSwitcher({ roleStore, agentConfig, saving, busyAction, createRole, deleteRole, setConversationRole }: WorkbenchProps) {
   const busy = saving && busyAction === "role-save";
   const text = getUiText(agentConfig.language);
 
@@ -40,9 +109,10 @@ function RoleSwitcher({ roleStore, agentConfig, saving, busyAction, createRole, 
         {roleStore.roles.map((role) => (
           <li key={role.id} className={role.id === agentConfig.id ? "active" : ""}>
             <button type="button" onClick={() => handleSelect(role.id)} disabled={busy}>
-              {role.name || role.roleTitle}
+              <span>{role.name || role.roleTitle}</span>
+              {role.builtIn && <small className="role-built-in">{text.sidebar.builtIn}</small>}
             </button>
-            {roleStore.roles.length > 1 && (
+            {roleStore.roles.length > 1 && !role.builtIn && (
               <button type="button" className="icon-button danger" onClick={() => handleDelete(role.id)} disabled={busy} aria-label={text.sidebar.deleteRole}>
                 <Trash2 size={13} />
               </button>
@@ -54,7 +124,7 @@ function RoleSwitcher({ roleStore, agentConfig, saving, busyAction, createRole, 
   );
 }
 
-function ConversationSwitcher({ agentConfig, conversation, conversations, saving, busyAction, createConversation, switchConversation, deleteConversation }: WorkbenchProps) {
+export function ConversationSwitcher({ agentConfig, conversation, conversations, saving, busyAction, createConversation, switchConversation, deleteConversation }: WorkbenchProps) {
   const busy = saving && busyAction === "conversation-switch";
   const text = getUiText(agentConfig.language);
 
@@ -191,7 +261,7 @@ export function AgentSidebar(props: WorkbenchProps) {
 }
 
 export function MobileSettings(props: WorkbenchProps) {
-  const { agentConfig, selectedProvider, setMobileView, pendingCandidates, memoryState, commitCandidates, updateAgent, openPanel } = props;
+  const { agentConfig, selectedProvider, teamStore, setMobileView, pendingCandidates, memoryState, commitCandidates, updateAgent, openPanel } = props;
   const text = getUiText(agentConfig.language);
   return (
     <section className="phone-frame settings motion-page">
@@ -210,6 +280,15 @@ export function MobileSettings(props: WorkbenchProps) {
         </div>
         <div className="mobile-card">
           <RoleSwitcher {...props} />
+        </div>
+        <div className="mobile-card">
+          <h2><Users size={16} />{text.mobileSettings.expertTeams}</h2>
+          <MobileSettingRow
+            icon={<Users size={16} />}
+            label={text.mobileSettings.expertTeams}
+            value={`${teamStore.teams.length}`}
+            onClick={() => openPanel("team")}
+          />
         </div>
         <div className="mobile-card">
           <h2>{text.mobileSettings.agentIdentity}</h2>
@@ -411,7 +490,16 @@ export function SettingsPanel(props: WorkbenchProps) {
   );
 }
 
-export function AgentEditorPanel({ agentConfig, updateAgent, embedded }: WorkbenchProps & { embedded?: boolean }) {
+export function AgentEditorPanel({
+  agentConfig,
+  updateAgent,
+  uploadRoleBackground,
+  resetRoleBackground,
+  notify,
+  saving,
+  busyAction,
+  embedded
+}: WorkbenchProps & { embedded?: boolean }) {
   const text = getUiText(agentConfig.language);
   return (
     <div className={embedded ? "embedded-editor" : "drawer-body"}>
@@ -428,6 +516,67 @@ export function AgentEditorPanel({ agentConfig, updateAgent, embedded }: Workben
         <label className="field">
           {text.sidebar.roleDescription}
           <textarea value={agentConfig.roleDescription} onChange={(event) => updateAgent({ ...agentConfig, roleDescription: event.target.value })} />
+        </label>
+      </section>
+      <section className="drawer-section">
+        <h3>{text.persona.avatar || "头像"}</h3>
+        <div className="emoji-picker" style={{ gridTemplateColumns: "repeat(4, 1fr)", display: "grid", gap: "6px" }}>
+          {EMOJI_OPTIONS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              className={agentConfig.avatar === emoji || (!agentConfig.avatar && emoji === "🤖") ? "active" : ""}
+              style={{ width: "100%", aspectRatio: "1", fontSize: "22px", borderRadius: "10px", border: "2px solid transparent", background: "#f2f4f7", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              onClick={() => updateAgent({ ...agentConfig, avatar: emoji })}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      </section>
+      <section className="drawer-section">
+        <h3>{text.persona.color || "主题色"}</h3>
+        <div className="color-swatches" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px" }}>
+          {ACCENT_PRESETS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              className={`color-swatch ${agentConfig.accentColor === color || (!agentConfig.accentColor && color === "#6366f1") ? "active" : ""}`}
+              style={{ background: color, width: "32px", height: "32px", borderRadius: "50%", border: "2px solid transparent", cursor: "pointer" }}
+              onClick={() => updateAgent({ ...agentConfig, accentColor: color })}
+              aria-label={color}
+            />
+          ))}
+        </div>
+      </section>
+      <section className="drawer-section">
+        <h3>{text.persona.background}</h3>
+        <BackgroundSettings
+          agentConfig={agentConfig}
+          saving={saving}
+          busyAction={busyAction}
+          uploadRoleBackground={uploadRoleBackground}
+          resetRoleBackground={resetRoleBackground}
+          notify={notify}
+        />
+      </section>
+      <section className="drawer-section">
+        <label className="field">
+          {text.persona.tone || "性格"}
+          <input
+            value={agentConfig.personalityTone || ""}
+            onChange={(event) => updateAgent({ ...agentConfig, personalityTone: event.target.value })}
+            placeholder={agentConfig.language === "en" ? "e.g. warm, professional, witty..." : "例如：温暖、专业、幽默..."}
+          />
+        </label>
+        <label className="field">
+          {text.persona.greeting || "开场白"}
+          <textarea
+            value={agentConfig.greeting || ""}
+            onChange={(event) => updateAgent({ ...agentConfig, greeting: event.target.value })}
+            placeholder={agentConfig.language === "en" ? "Hi, I'm your chat companion..." : "你好，我是你的聊天伙伴..."}
+            rows={3}
+          />
         </label>
       </section>
       <section className="drawer-section">
@@ -449,7 +598,7 @@ export function AgentEditorPanel({ agentConfig, updateAgent, embedded }: Workben
   );
 }
 
-function AdminTokenPanel({ agentConfig, adminToken, updateAdminToken, compact }: WorkbenchProps & { compact?: boolean }) {
+export function AdminTokenPanel({ agentConfig, adminToken, updateAdminToken, compact }: WorkbenchProps & { compact?: boolean }) {
   const [draft, setDraft] = useState("");
   const text = getUiText(agentConfig.language);
 

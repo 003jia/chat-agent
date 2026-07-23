@@ -1,14 +1,15 @@
 import type { FormEvent } from "react";
-import type { AgentConfig, Conversation, ConversationSummary, MemoryItem, MemoryState, ModelConfig, ModelProviderConfig, RoleStore, WebSearchResponse } from "./types";
+import type { AgentConfig, Conversation, ConversationSummary, ExpertTeam, ExpertTeamStore, MemoryItem, MemoryState, ModelConfig, ModelProviderConfig, RoleStore, WebSearchResponse } from "./types";
 
-export type ActivePanel = "search" | "settings" | "memory" | "tools" | "summary" | "agent" | "webSearch" | null;
+export type ActivePanel = "search" | "settings" | "memory" | "tools" | "summary" | "agent" | "webSearch" | "team" | null;
 export type ChatMode = "normal" | "thinking" | "memory" | "tools" | "web";
 export type PanelPhase = "enter" | "exit";
-export type BusyAction = "model-test" | "memory-commit" | "memory-organize" | "web-search" | "role-save" | "conversation-switch" | null;
+export type BusyAction = "model-test" | "memory-commit" | "memory-organize" | "web-search" | "role-save" | "team-save" | "conversation-switch" | null;
 
 export interface WorkbenchProps {
   agentConfig: AgentConfig;
   roleStore: RoleStore;
+  teamStore: ExpertTeamStore;
   modelConfig: ModelConfig;
   selectedProvider: ModelProviderConfig;
   conversation: Conversation;
@@ -34,9 +35,15 @@ export interface WorkbenchProps {
   setDraft: (value: string) => void;
   updateAdminToken: (value: string) => void;
   updateAgent: (config: AgentConfig) => Promise<void>;
+  uploadRoleBackground: (file: File) => Promise<void>;
+  resetRoleBackground: () => Promise<void>;
   createRole: (role: Partial<AgentConfig>) => Promise<void>;
   deleteRole: (roleId: string) => Promise<void>;
   selectRole: (roleId: string) => Promise<void>;
+  createTeam: (team: Pick<ExpertTeam, "name" | "goal" | "enabled" | "leadRoleId" | "memberRoleIds">) => Promise<void>;
+  updateTeam: (teamId: string, team: Pick<ExpertTeam, "name" | "goal" | "enabled" | "leadRoleId" | "memberRoleIds">) => Promise<void>;
+  selectTeam: (teamId: string) => Promise<void>;
+  deleteTeam: (teamId: string) => Promise<void>;
   saveModel: (config: ModelConfig) => Promise<boolean>;
   testModel: () => Promise<void>;
   sendMessage: (event?: FormEvent) => Promise<void>;
@@ -60,5 +67,8 @@ export interface WorkbenchProps {
   switchConversation: (conversationId: string) => Promise<void>;
   deleteConversation: (conversationId: string) => Promise<void>;
   setConversationRole: (roleId: string) => Promise<void>;
+  regenerateMessage: () => Promise<void>;
+  copyMessage: (content: string) => Promise<void>;
+  isRegenerating: boolean;
   toggleMemoryPanel: () => void;
 }

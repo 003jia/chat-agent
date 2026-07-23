@@ -46,7 +46,9 @@ import {
 } from "./memory.mjs";
 import { buildSystemPrompt, formatUserMessageForModel } from "./prompt.mjs";
 import { withRetry } from "./retry.mjs";
+import { createSummaryHandler } from "./summary.mjs";
 import { performWebSearch, WEB_SEARCH_RESULT_LIMIT } from "./search.mjs";
+import { emptyTeamStore, normalizeTeamStore } from "./teams.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultRootDir = path.resolve(__dirname, "..");
@@ -76,6 +78,7 @@ export function createApp(options = {}) {
   const conversationsDir = path.join(dataDir, "conversations");
   const memoryDir = path.join(dataDir, "memory");
   const rawMemoryDir = path.join(memoryDir, "raw");
+  const backgroundsDir = path.join(dataDir, "backgrounds");
   const memoryWriteLock = createMutex();
   const backgroundTasks = new Set();
 
@@ -102,13 +105,19 @@ export function createApp(options = {}) {
     }
   }));
   app.use(express.json({ limit: "2mb" }));
+  const backgroundUploadParser = express.raw({
+    type: ["image/jpeg", "image/png", "image/webp"],
+    limit: "8mb"
+  });
 
   async function ensureDataStore() {
     await fs.mkdir(configDir, { recursive: true });
     await fs.mkdir(conversationsDir, { recursive: true });
     await fs.mkdir(rawMemoryDir, { recursive: true });
+    await fs.mkdir(backgroundsDir, { recursive: true });
     await ensureRoleStore();
     await ensureJson(path.join(configDir, "models.json"), defaultModelConfig);
+    await ensureJson(path.join(configDir, "teams.json"), emptyTeamStore);
     await ensureJson(path.join(conversationsDir, "default.json"), seedConversation);
     await ensureJson(path.join(memoryDir, "index.json"), seedMemoryIndex);
     await ensureText(path.join(memoryDir, "memory.md"), renderMemoryMarkdown(seedMemoryIndex));
@@ -118,6 +127,11 @@ export function createApp(options = {}) {
     const rolesPath = path.join(configDir, "roles.json");
     try {
       await fs.access(rolesPath);
+      const current = await readJson(rolesPath, null);
+      const normalized = normalizeRoleStore(current);
+      if (JSON.stringify(current) !== JSON.stringify(normalized)) {
+        await writeJson(rolesPath, normalized);
+      }
       return;
     } catch {
       // fall through to migrate or seed
@@ -339,6 +353,41 @@ export function createApp(options = {}) {
     await writeJson(path.join(configDir, "roles.json"), store);
   }
 
+  async function getTeamStore() {
+    const roleStore = await getRoleStore();
+    return normalizeTeamStore(await readJson(path.join(configDir, "teams.json"), emptyTeamStore), roleStore.roles);
+  }
+
+  async function saveTeamStore(store) {
+    const roleStore = await getRoleStore();
+    const normalized = normalizeTeamStore(store, roleStore.roles);
+    await writeJson(path.join(configDir, "teams.json"), normalized);
+    return normalized;
+  }
+
+  function validateRoleId(roleId) {
+    if (!/^[a-zA-Z0-9_-]+$/.test(String(roleId || ""))) {
+      throw apiError(400, "VALIDATION_ERROR", "角色 ID 格式无效。");
+    }
+    return roleId;
+  }
+
+  function backgroundPath(roleId, extension) {
+    return path.join(backgroundsDir, `${validateRoleId(roleId)}.${extension}`);
+  }
+
+  async function removeRoleBackgroundFiles(roleId) {
+    await Promise.all(
+      Object.values(BACKGROUND_IMAGE_TYPES).map(async ({ extension }) => {
+        try {
+          await fs.unlink(backgroundPath(roleId, extension));
+        } catch (error) {
+          if (error?.code !== "ENOENT") throw error;
+        }
+      })
+    );
+  }
+
   async function checkReadiness() {
     const checks = {
       dataStore: await readinessCheck(async () => {
@@ -348,6 +397,7 @@ export function createApp(options = {}) {
       config: await readinessCheck(async () => {
         await readJsonStrict(path.join(configDir, "roles.json"));
         await readJsonStrict(path.join(configDir, "models.json"));
+        await readJsonStrict(path.join(configDir, "teams.json"));
       }),
       memory: await readinessCheck(async () => {
         await readJsonStrict(path.join(memoryDir, "index.json"));
@@ -494,15 +544,178 @@ export function createApp(options = {}) {
     }
   });
 
+  app.get("/api/teams", async (_request, response, next) => {
+    try {
+      response.json(await getTeamStore());
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/teams", writeLimiter, adminAuth, async (request, response, next) => {
+    try {
+      const roleStore = await getRoleStore();
+      const memberRoleIds = validateTeamMembers(request.body?.memberRoleIds, roleStore.roles);
+      const now = new Date().toISOString();
+      const team = {
+        id: createId("team"),
+        name: validateTeamName(request.body?.name),
+        goal: validateTeamGoal(request.body?.goal),
+        enabled: request.body?.enabled !== false,
+        memberRoleIds,
+        leadRoleId: validateTeamLead(request.body?.leadRoleId, memberRoleIds),
+        createdAt: now,
+        updatedAt: now
+      };
+      const store = await getTeamStore();
+      const nextStore = await saveTeamStore({
+        selectedTeamId: team.id,
+        teams: [...store.teams, team]
+      });
+      response.status(201).json(nextStore);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put("/api/teams/:teamId", writeLimiter, adminAuth, async (request, response, next) => {
+    try {
+      const store = await getTeamStore();
+      const existing = store.teams.find((team) => team.id === request.params.teamId);
+      if (!existing) throw apiError(404, "TEAM_NOT_FOUND", "专家团不存在。");
+      const roleStore = await getRoleStore();
+      const memberRoleIds = validateTeamMembers(request.body?.memberRoleIds, roleStore.roles);
+      const updated = {
+        ...existing,
+        name: validateTeamName(request.body?.name),
+        goal: validateTeamGoal(request.body?.goal),
+        enabled: request.body?.enabled !== false,
+        memberRoleIds,
+        leadRoleId: validateTeamLead(request.body?.leadRoleId, memberRoleIds),
+        updatedAt: new Date().toISOString()
+      };
+      const nextStore = await saveTeamStore({
+        selectedTeamId: store.selectedTeamId,
+        teams: store.teams.map((team) => (team.id === existing.id ? updated : team))
+      });
+      response.json(nextStore);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put("/api/teams/:teamId/select", writeLimiter, adminAuth, async (request, response, next) => {
+    try {
+      const store = await getTeamStore();
+      if (!store.teams.some((team) => team.id === request.params.teamId)) {
+        throw apiError(404, "TEAM_NOT_FOUND", "专家团不存在。");
+      }
+      response.json(await saveTeamStore({ ...store, selectedTeamId: request.params.teamId }));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/teams/:teamId", writeLimiter, adminAuth, async (request, response, next) => {
+    try {
+      const store = await getTeamStore();
+      const teams = store.teams.filter((team) => team.id !== request.params.teamId);
+      if (teams.length === store.teams.length) throw apiError(404, "TEAM_NOT_FOUND", "专家团不存在。");
+      const selectedTeamId = store.selectedTeamId === request.params.teamId
+        ? teams[0]?.id || null
+        : store.selectedTeamId;
+      response.json(await saveTeamStore({ selectedTeamId, teams }));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/roles/:roleId/background", async (request, response, next) => {
+    try {
+      const store = await getRoleStore();
+      const role = store.roles.find((item) => item.id === request.params.roleId);
+      if (!role) throw apiError(404, "ROLE_NOT_FOUND", "角色预设不存在。");
+      const imageType = BACKGROUND_IMAGE_TYPES[role.backgroundMime];
+      if (!imageType) throw apiError(404, "BACKGROUND_NOT_FOUND", "该角色未设置自定义背景。");
+      const image = await fs.readFile(backgroundPath(role.id, imageType.extension)).catch((error) => {
+        if (error?.code === "ENOENT") throw apiError(404, "BACKGROUND_NOT_FOUND", "自定义背景文件不存在。");
+        throw error;
+      });
+      response.set("Cache-Control", "private, max-age=31536000, immutable");
+      response.type(role.backgroundMime).send(image);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put("/api/roles/:roleId/background", writeLimiter, adminAuth, backgroundUploadParser, async (request, response, next) => {
+    try {
+      const store = await getRoleStore();
+      const existing = store.roles.find((role) => role.id === request.params.roleId);
+      if (!existing) throw apiError(404, "ROLE_NOT_FOUND", "角色预设不存在。");
+      const imageType = BACKGROUND_IMAGE_TYPES[request.get("content-type")?.split(";")[0]?.trim().toLowerCase()];
+      if (!imageType || !Buffer.isBuffer(request.body) || !request.body.length) {
+        throw apiError(415, "UNSUPPORTED_IMAGE_TYPE", "仅支持 JPG、PNG 或 WebP 背景图片。");
+      }
+      if (!imageType.matches(request.body)) {
+        throw apiError(400, "INVALID_IMAGE", "图片内容与文件格式不匹配。");
+      }
+      await fs.mkdir(backgroundsDir, { recursive: true });
+      await removeRoleBackgroundFiles(existing.id);
+      await retryFileWrite(() => fs.writeFile(backgroundPath(existing.id, imageType.extension), request.body));
+      const updatedAt = new Date().toISOString();
+      const updatedRole = {
+        ...existing,
+        backgroundImage: `/api/roles/${encodeURIComponent(existing.id)}/background?v=${encodeURIComponent(updatedAt)}`,
+        backgroundMime: request.get("content-type").split(";")[0].trim().toLowerCase(),
+        backgroundUpdatedAt: updatedAt
+      };
+      const nextStore = normalizeRoleStore({
+        selectedRoleId: store.selectedRoleId,
+        roles: store.roles.map((role) => (role.id === existing.id ? updatedRole : role))
+      });
+      await saveRoleStore(nextStore);
+      response.json(nextStore);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/roles/:roleId/background", writeLimiter, adminAuth, async (request, response, next) => {
+    try {
+      const store = await getRoleStore();
+      const existing = store.roles.find((role) => role.id === request.params.roleId);
+      if (!existing) throw apiError(404, "ROLE_NOT_FOUND", "角色预设不存在。");
+      await removeRoleBackgroundFiles(existing.id);
+      const updatedRole = { ...existing };
+      delete updatedRole.backgroundImage;
+      delete updatedRole.backgroundMime;
+      delete updatedRole.backgroundUpdatedAt;
+      const nextStore = normalizeRoleStore({
+        selectedRoleId: store.selectedRoleId,
+        roles: store.roles.map((role) => (role.id === existing.id ? updatedRole : role))
+      });
+      await saveRoleStore(nextStore);
+      response.json(nextStore);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.post("/api/roles", writeLimiter, adminAuth, async (request, response, next) => {
     try {
       const store = await getRoleStore();
       const role = {
         ...defaultAgentConfig,
         ...request.body,
+        builtIn: false,
+        capabilityIds: [],
         behavior: { ...defaultAgentConfig.behavior, ...request.body?.behavior },
         id: createId("role")
       };
+      delete role.backgroundImage;
+      delete role.backgroundMime;
+      delete role.backgroundUpdatedAt;
       const nextStore = normalizeRoleStore({ selectedRoleId: store.selectedRoleId, roles: [...store.roles, role] });
       await saveRoleStore(nextStore);
       response.status(201).json(nextStore);
@@ -519,6 +732,11 @@ export function createApp(options = {}) {
       const merged = {
         ...existing,
         ...request.body,
+        builtIn: existing.builtIn,
+        capabilityIds: existing.capabilityIds,
+        backgroundImage: existing.backgroundImage,
+        backgroundMime: existing.backgroundMime,
+        backgroundUpdatedAt: existing.backgroundUpdatedAt,
         behavior: { ...existing.behavior, ...request.body?.behavior },
         id: existing.id
       };
@@ -537,13 +755,18 @@ export function createApp(options = {}) {
     try {
       const store = await getRoleStore();
       if (store.roles.length <= 1) throw apiError(400, "VALIDATION_ERROR", "至少需要保留一个角色预设。");
+      const targetRole = store.roles.find((role) => role.id === request.params.roleId);
+      if (targetRole?.builtIn) throw apiError(400, "ROLE_PROTECTED", "内置能力角色不能删除。");
       const remainingRoles = store.roles.filter((role) => role.id !== request.params.roleId);
       if (remainingRoles.length === store.roles.length) throw apiError(404, "ROLE_NOT_FOUND", "角色预设不存在。");
       const nextStore = normalizeRoleStore({
         selectedRoleId: store.selectedRoleId === request.params.roleId ? remainingRoles[0].id : store.selectedRoleId,
         roles: remainingRoles
       });
+      await removeRoleBackgroundFiles(request.params.roleId);
       await saveRoleStore(nextStore);
+      const teamStore = await getTeamStore();
+      await saveTeamStore(teamStore);
       response.json(nextStore);
     } catch (error) {
       next(error);
@@ -674,6 +897,15 @@ export function createApp(options = {}) {
       next(error);
     }
   });
+
+  const handleSummary = createSummaryHandler({
+    getConversation,
+    saveConversation,
+    getRoleStore,
+    getSelectedProvider: getSelectedProviderOptional
+  });
+
+  app.post("/api/conversations/:conversationId/summary", writeLimiter, adminAuth, handleSummary);
 
   async function handleWebSearchRequest(request, response, next) {
     try {
@@ -900,7 +1132,49 @@ export function createApp(options = {}) {
     await Promise.allSettled(Array.from(backgroundTasks));
   }
 
-  return { app, ensureDataStore, checkReadiness, waitForBackgroundTasks, paths: { rootDir, dataDir, configDir, conversationsDir, memoryDir, rawMemoryDir } };
+  return { app, ensureDataStore, checkReadiness, waitForBackgroundTasks, paths: { rootDir, dataDir, configDir, conversationsDir, memoryDir, rawMemoryDir, backgroundsDir } };
+}
+
+const BACKGROUND_IMAGE_TYPES = {
+  "image/jpeg": {
+    extension: "jpg",
+    matches: (buffer) => buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff
+  },
+  "image/png": {
+    extension: "png",
+    matches: (buffer) => buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  },
+  "image/webp": {
+    extension: "webp",
+    matches: (buffer) => buffer.length >= 12 && buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP"
+  }
+};
+
+function validateTeamName(value) {
+  const name = String(value || "").trim();
+  if (!name) throw apiError(400, "VALIDATION_ERROR", "专家团名称不能为空。");
+  return name.slice(0, 80);
+}
+
+function validateTeamGoal(value) {
+  return String(value || "").trim().slice(0, 2000);
+}
+
+function validateTeamMembers(value, roles) {
+  const validRoleIds = new Set(roles.map((role) => role.id));
+  const memberRoleIds = Array.from(new Set(
+    (Array.isArray(value) ? value : []).map(String).filter((roleId) => validRoleIds.has(roleId))
+  ));
+  if (!memberRoleIds.length) throw apiError(400, "VALIDATION_ERROR", "专家团至少需要加入一个角色。");
+  return memberRoleIds;
+}
+
+function validateTeamLead(value, memberRoleIds) {
+  const leadRoleId = String(value || "");
+  if (!memberRoleIds.includes(leadRoleId)) {
+    throw apiError(400, "VALIDATION_ERROR", "Lead 必须是已加入专家团的角色。");
+  }
+  return leadRoleId;
 }
 
 function createRateLimiter(options) {

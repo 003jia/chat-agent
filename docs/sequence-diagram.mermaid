@@ -1,0 +1,102 @@
+%% ============ 4.1 抽屉开关（P0-1） ============
+sequenceDiagram
+    actor U as 用户
+    participant CP as ChatPanel(顶部栏)
+    participant S as useWorkbenchState
+    participant IP as InteractionPanel
+    U->>CP: 点击 设置/记忆 按钮
+    CP->>S: openPanel("settings" | "memory")
+    S-->>S: setActivePanel/renderedPanel=panel, panelPhase="enter"
+    S-->>IP: props(activePanel, renderedPanel, panelPhase)
+    IP->>IP: 渲染 overlay + drawer(enter 动画)
+    U->>IP: 点击遮罩 / 关闭
+    IP->>S: closePanel()
+    S-->>S: panelPhase="exit"，240ms 后 activePanel=null
+    IP->>IP: 播放 drawer-out 动画后卸载
+
+%% ============ 4.2 发送消息流式（P0-8 复用既有 SSE） ============
+sequenceDiagram
+    actor U as 用户
+    participant CP as ChatPanel(composer)
+    participant S as useWorkbenchState
+    participant API as api.streamChat
+    participant SRV as /api/chat/stream (SSE)
+    participant M as streamModelDeltas
+    U->>CP: 输入并发送
+    CP->>S: sendMessage()
+    S->>S: 本地插入 user + 空 assistant(loading)
+    S->>API: streamChat(content, mode, web, convId, onEvent)
+    API->>SRV: POST SSE
+    SRV->>M: 逐块产出 delta
+    loop 每个 token
+        M-->>SRV: delta
+        SRV-->>API: event: message.delta
+        API-->>S: onEvent("message.delta", {delta})
+        S->>S: appendMessageDelta(同一 assistantId)
+        S-->>CP: 气泡内容增长 + 光标闪烁/头像脉冲
+    end
+    SRV-->>API: event: message.done {reply, conversation, ...}
+    API-->>S: onEvent("message.done")
+    S->>S: setConversation(payload.conversation)
+    S->>S: 刷新会话列表 + 记忆状态
+
+%% ============ 4.3 重新生成（P0-7） ============
+sequenceDiagram
+    actor U as 用户
+    participant MB as MessageBubble(助手)
+    participant S as useWorkbenchState
+    participant API as api.streamChat
+    participant SRV as /api/chat/stream
+    U->>MB: 点击「重新生成」
+    MB->>S: regenerate(targetAssistantId)
+    S->>S: 取最后一条 user 消息内容
+    S->>S: 清空该 assistant 内容, sending=true (复用同 id)
+    S->>API: streamChat(lastUserContent, mode, web, convId, onEvent)
+    API->>SRV: POST SSE（同 4.2 流程）
+    SRV-->>API: message.delta 流
+    API-->>S: onEvent("message.delta")
+    S->>S: appendMessageDelta(targetAssistantId)
+    SRV-->>API: message.done {reply, conversation}
+    API-->>S: onEvent("message.done")
+    S->>S: setConversation(payload.conversation); sending=false
+    Note over S: 失败则保留原内容并 toast（不破坏历史）
+
+%% ============ 4.4 开场白虚拟注入（P0-4） ============
+sequenceDiagram
+    actor U as 用户
+    participant S as useWorkbenchState
+    participant CP as ChatPanel
+    participant MB as MessageBubble
+    U->>S: 新建空会话 / 打开 messages 为空的会话
+    S->>S: 计算 displayMessages
+    alt conversation.messages 为空 且 agentConfig.greeting 存在(或非空默认文案)
+        S-->>CP: 渲染时前置合成问候消息 {isGreeting:true, content: greeting}
+    else 无可用 greeting
+        S-->>CP: 使用默认问候文案（含 name）
+    end
+    CP->>MB: 渲染问候气泡(无复制/重生成, 不显示时间戳)
+    Note over MB: 问候消息不进入 conversation.messages，不发给模型
+
+%% ============ 4.5 摘要生成（P0-9 真接入） ============
+sequenceDiagram
+    actor U as 用户
+    participant SP as SummaryPanel
+    participant S as useWorkbenchState
+    participant API as api.generateSummary(convId)
+    participant SRV as POST /api/conversations/:id/summary
+    participant P as buildSummaryPrompt
+    participant M as callModel(temp=0.2)
+    participant R as ConversationRepo
+    U->>SP: 点击「生成摘要」
+    SP->>S: generateSummary()
+    S->>API: POST summary
+    API->>SRV: 请求 {limit?, language?}
+    SRV->>R: getConversation(id)
+    SRV->>P: buildSummaryPrompt(agentConfig, 最近 N 条, language)
+    SRV->>M: callModel(provider, messages, 0.2, max_tokens=800)
+    M-->>SRV: summary 文本
+    SRV->>R: 写 conversation.summary / summaryGeneratedAt / summaryModel
+    SRV-->>API: {summary, generatedAt, model, messageCount}
+    API-->>S: res
+    S->>S: setGeneratedSummary(res.summary); openPanel("summary")
+    Note over SRV: 空对话→400 EMPTY_CONVERSATION；模型失败→502 SUMMARY_FAILED 且不改原数据

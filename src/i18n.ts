@@ -80,7 +80,34 @@ export const copy = {
       mobileSearch: "搜索",
       mobileTools: "工具",
       typing: "正在生成...",
+      roleQuickPrompts: "当前角色快捷任务",
       referenced: (count: number) => `引用 ${count} 条记忆`
+    },
+    companion: {
+      header: {
+        online: "在线"
+      },
+      memory: {
+        footnote: (count: number) => `引用了 ${count} 条记忆`
+      },
+      copySuccess: "已复制",
+      greeting: {
+        default: "你好，我是你的聊天伙伴。有什么想聊的吗？"
+      },
+      regenerate: "重新生成",
+      copy: "复制"
+    },
+    persona: {
+      avatar: "头像",
+      color: "主题色",
+      background: "聊天背景",
+      uploadBackground: "上传图片",
+      resetBackground: "恢复默认",
+      defaultBackground: "默认蓝色液态背景",
+      customBackground: "已使用自定义背景",
+      backgroundHint: "支持 JPG、PNG、WebP，最大 8 MB",
+      tone: "性格",
+      greeting: "开场白"
     },
     sidebar: {
       memoryEnabled: "长期记忆已启用",
@@ -89,6 +116,7 @@ export const copy = {
       deleteConversation: "删除会话",
       messageCount: (count: number) => `${count} 条`,
       rolePresets: "角色预设",
+      builtIn: "内置能力",
       newRole: "新增角色",
       deleteRole: "删除角色",
       createRolePrompt: "新角色名称？",
@@ -134,6 +162,7 @@ export const copy = {
       keyMissing: "Key 未配置",
       contextSuffix: "上下文",
       memoryManagement: "记忆管理",
+      expertTeams: "专家团",
       items: (count: number) => `${count} 项`,
       loaded: "已加载",
       candidates: "候选",
@@ -210,6 +239,7 @@ export const copy = {
       summary: "会话摘要",
       agent: "智能体身份",
       webSearch: "联网搜索",
+      team: "专家团配置",
       workspace: "记忆工作台"
     } satisfies Record<Exclude<ActivePanel, null>, string> & { workspace: string },
     searchPanel: {
@@ -330,7 +360,34 @@ export const copy = {
       mobileSearch: "Search",
       mobileTools: "Tools",
       typing: "Generating...",
+      roleQuickPrompts: "Role quick tasks",
       referenced: (count: number) => `Referenced ${count} memor${count === 1 ? "y" : "ies"}`
+    },
+    companion: {
+      header: {
+        online: "Online"
+      },
+      memory: {
+        footnote: (count: number) => `Referenced ${count} memor${count === 1 ? "y" : "ies"}`
+      },
+      copySuccess: "Copied",
+      greeting: {
+        default: "Hi, I'm your chat companion. What would you like to talk about?"
+      },
+      regenerate: "Regenerate",
+      copy: "Copy"
+    },
+    persona: {
+      avatar: "Avatar",
+      color: "Theme Color",
+      background: "Chat Background",
+      uploadBackground: "Upload Image",
+      resetBackground: "Use Default",
+      defaultBackground: "Default blue liquid background",
+      customBackground: "Custom background active",
+      backgroundHint: "JPG, PNG or WebP, up to 8 MB",
+      tone: "Personality",
+      greeting: "Greeting"
     },
     sidebar: {
       memoryEnabled: "Long-term memory enabled",
@@ -339,6 +396,7 @@ export const copy = {
       deleteConversation: "Delete conversation",
       messageCount: (count: number) => `${count} msg${count === 1 ? "" : "s"}`,
       rolePresets: "Role Presets",
+      builtIn: "Built-in",
       newRole: "New role",
       deleteRole: "Delete role",
       createRolePrompt: "New role name?",
@@ -384,6 +442,7 @@ export const copy = {
       keyMissing: "Key missing",
       contextSuffix: "context",
       memoryManagement: "Memory Management",
+      expertTeams: "Expert Teams",
       items: (count: number) => `${count} item${count === 1 ? "" : "s"}`,
       loaded: "Loaded",
       candidates: "Candidates",
@@ -460,6 +519,7 @@ export const copy = {
       summary: "Conversation Summary",
       agent: "Agent Identity",
       webSearch: "Web Search",
+      team: "Expert Team",
       workspace: "Memory Workbench"
     } satisfies Record<Exclude<ActivePanel, null>, string> & { workspace: string },
     searchPanel: {

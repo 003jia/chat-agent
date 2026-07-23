@@ -4,11 +4,13 @@ import { getUiText } from "../i18n";
 import type { WorkbenchProps, ActivePanel } from "../workbenchTypes";
 import { AgentEditorPanel, SettingsPanel } from "./SettingsPanels";
 import { MemoryDetailPanel } from "./MemoryPanel";
+import { TeamPanel } from "./TeamPanel";
 import { humanizeMemoryType } from "./ui";
 
 export function InteractionPanel(props: WorkbenchProps) {
   const { agentConfig, renderedPanel, panelPhase, closePanel } = props;
-  if (!renderedPanel) return null;
+  // settings 和 memory 面板现由 DesktopWorkbench 直接渲染（左/右抽屉），InteractionPanel 不处理
+  if (!renderedPanel || renderedPanel === "settings" || renderedPanel === "memory") return null;
   const text = getUiText(agentConfig.language);
   const titles: Record<Exclude<ActivePanel, null>, string> = text.panels;
 
@@ -25,12 +27,11 @@ export function InteractionPanel(props: WorkbenchProps) {
           <button type="button" onClick={closePanel} aria-label={text.common.close}><X size={20} /></button>
         </header>
         {renderedPanel === "search" && <SearchPanel {...props} />}
-        {renderedPanel === "settings" && <SettingsPanel {...props} />}
-        {renderedPanel === "memory" && <MemoryDetailPanel {...props} />}
         {renderedPanel === "tools" && <ToolsPanel {...props} />}
         {renderedPanel === "summary" && <SummaryPanel {...props} />}
         {renderedPanel === "agent" && <AgentEditorPanel {...props} />}
         {renderedPanel === "webSearch" && <WebSearchPanel {...props} />}
+        {renderedPanel === "team" && <TeamPanel {...props} />}
       </div>
     </div>
   );

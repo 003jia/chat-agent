@@ -1,11 +1,17 @@
 import { apiError } from "./errors.mjs";
+import { EXPERT_TEAM_AUTHORING_CAPABILITY_ID, hasKnownCapability } from "./capabilities.mjs";
 
 export const DEFAULT_CONTEXT_LENGTH = 64000;
+export const EXPERT_TEAM_AUTHOR_ROLE_ID = "role-expert-team-author";
 
 export const defaultAgentConfig = {
   name: "Memory Agent",
   roleTitle: "本地研究助理",
   roleDescription: "保持克制、追问关键上下文，并把稳定事实整理为可追溯的长期记忆。",
+  avatar: "\u{1F916}",
+  accentColor: "#6366f1",
+  personalityTone: "温暖克制",
+  greeting: "你好，我是你的 AI 研究助理。有什么我可以帮你的吗？",
   language: "zh",
   behavior: {
     proactiveFollowup: true,
@@ -16,9 +22,35 @@ export const defaultAgentConfig = {
   temperature: 0.62
 };
 
+export const expertTeamAuthorRole = {
+  ...defaultAgentConfig,
+  id: EXPERT_TEAM_AUTHOR_ROLE_ID,
+  name: "专家团架构师",
+  roleTitle: "Comate 专家团架构师",
+  roleDescription: "把复杂目标整理成可注册、可路由、可验证的 Team 专家团；支持新建、迁移和审查，但不伪造真实子 Agent 执行结果。",
+  avatar: "🧭",
+  accentColor: "#0f766e",
+  personalityTone: "严谨、结构化、证据优先",
+  greeting: "你好，我可以帮你设计、迁移或审查 Comate/CodeBuddy Team 专家团。请给我团队目标、现有目录或待审查的插件。",
+  capabilityIds: [EXPERT_TEAM_AUTHORING_CAPABILITY_ID],
+  quickPrompts: [
+    "根据我的目标设计一个新的 Team 专家团",
+    "审查现有专家团的 Manifest、Agent ID 和工作流",
+    "把 Skill 编排的多 Agent 插件迁移成 Team 插件"
+  ],
+  builtIn: true,
+  temperature: 0.3,
+  behavior: {
+    proactiveFollowup: true,
+    citeMemory: true,
+    autoSaveNotes: true,
+    strictRetrieval: true
+  }
+};
+
 export function defaultRoleStore(seedRoleId = "role-default") {
   const role = { ...defaultAgentConfig, id: seedRoleId };
-  return { selectedRoleId: seedRoleId, roles: [role] };
+  return { selectedRoleId: seedRoleId, roles: [role, expertTeamAuthorRole] };
 }
 
 export function normalizeRoleStore(store, legacyAgentConfig) {
@@ -27,11 +59,27 @@ export function normalizeRoleStore(store, legacyAgentConfig) {
     const seedRole = { ...defaultAgentConfig, ...(legacyAgentConfig || {}), id: "role-default" };
     roles.push(seedRole);
   }
-  const normalizedRoles = roles.map((role) => ({
-    ...defaultAgentConfig,
-    ...role,
-    behavior: { ...defaultAgentConfig.behavior, ...role.behavior }
-  }));
+  if (!roles.some((role) => role.id === EXPERT_TEAM_AUTHOR_ROLE_ID)) {
+    roles.push(expertTeamAuthorRole);
+  }
+  const normalizedRoles = roles.map((role) => {
+    const isExpertTeamAuthor = role.id === EXPERT_TEAM_AUTHOR_ROLE_ID;
+    const defaults = isExpertTeamAuthor ? expertTeamAuthorRole : defaultAgentConfig;
+    return {
+      ...defaults,
+      ...role,
+      builtIn: isExpertTeamAuthor || Boolean(role.builtIn),
+      capabilityIds: isExpertTeamAuthor
+        ? [EXPERT_TEAM_AUTHORING_CAPABILITY_ID]
+        : Array.isArray(role.capabilityIds)
+          ? role.capabilityIds.filter(hasKnownCapability)
+          : [],
+      quickPrompts: Array.isArray(role.quickPrompts)
+        ? role.quickPrompts.map(String).filter(Boolean).slice(0, 6)
+        : defaults.quickPrompts || [],
+      behavior: { ...defaults.behavior, ...role.behavior }
+    };
+  });
   const selectedRoleId = normalizedRoles.some((role) => role.id === store?.selectedRoleId)
     ? store.selectedRoleId
     : normalizedRoles[0].id;
