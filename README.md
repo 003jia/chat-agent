@@ -1,6 +1,14 @@
 # Memory Agent Workbench
 
-一个本地优先的聊天智能体工作台。它支持角色预设、多供应商模型配置、流式对话、联网搜索、本地长期记忆和候选记忆审核。相比通用助手默认替你记住一切，这里更强调“你拥有对长期记忆的最终审批权”。
+一个本地优先的智能体工作台。对话是入口，长期目标是让模型在受控权限下规划任务、调用工具、验证结果并交付产物。当前版本支持角色预设、多供应商模型、流式对话、联网搜索、可审计工具任务和本地长期记忆。
+
+## 产品方向：从对话到任务执行
+
+- 模型负责理解目标、规划步骤和选择工具。
+- 服务端工具注册表负责参数校验、权限判断和实际执行。
+- 只读工具可以自动执行；写入、发布、删除等高风险工具必须经过人工确认。
+- 每次工具调用都会形成独立任务记录，保存目标、输入、状态、结果摘要和错误。
+- 工具输出属于任务证据，不会直接写入长期记忆；任务完成后再提炼稳定事实和可复用经验。
 
 ## 产品差异化：可控的长期记忆
 
@@ -19,7 +27,13 @@ Memory Agent Workbench 采用**先审后写**机制：后台抽取出的每一�
 - 多供应商模型：支持 OpenAI-compatible、OpenAI、DeepSeek、Anthropic。
 - 流式聊天：前端逐段渲染模型回复，避免等待整段响应。
 - Markdown 消息：支持列表、代码块、表格、链接和引用。
+- Chatbox 类型会话工作流：桌面常驻可折叠侧栏、会话筛选、置顶、重命名、删除和导出。
+- 全局历史搜索：跨本地会话检索消息并切换到命中的会话。
+- 输入区模型切换与上下文估算：快速切换供应商，显示当前会话相对 contextLength 的估算占用。
 - 联网搜索：搜索结果会作为不可信上下文注入，并带 prompt 注入防护。
+- 受控工具运行台：提供统一工具描述、JSON 输入 Schema、权限级别和执行接口。
+- 可审计任务记录：工具执行按会话保存，可在工具抽屉查看目标、结果、状态和时间。
+- 首批工具：联网搜索和长期记忆检索，均为只读自动执行。
 - 长期记忆：候选先审核，确认后更新 `index.json`，追加 `raw/` 审计日志，并重新渲染 `memory.md`。
 - 记忆优化：中文友好检索、可选 Embedding 语义召回、常驻高优先级偏好、候选持久化、`add/update/disable/noop` 语义、逐条接受/编辑/拒绝、活跃记忆编辑/禁用/删除。
 - 安全加固：CORS 白名单、本地监听、管理令牌、限流、模型请求超时、错误脱敏日志。
@@ -83,12 +97,33 @@ data/config/models.json
 data/config/teams.json
 data/backgrounds/*                  # 角色自定义背景
 data/conversations/*.json
+data/tasks/*.json                   # 工具任务、执行步骤和结果摘要
 data/memory/raw/YYYY-MM-DD.md   # 审核通过后的 append-only 审计日志
-data/memory/index.json          # 记忆主索引，包含 active/candidate/disabled 状态
+data/memory/index.json          # 记忆主索引，包含 active/candidate/disabled/deleted 状态
+data/memory/embeddings.json     # 可选 Embedding 向量 sidecar
 data/memory/memory.md           # 由 index.json 中 active 记忆自动渲染的可读摘要
 ```
 
 这些文件可能包含 API Key、会话记录和个人长期记忆，默认不会提交到 GitHub。
+
+## 工具与任务流程
+
+```text
+用户填写任务目标
+  -> 从注册表选择工具
+  -> 服务端校验工具 ID、输入 Schema 和权限
+  -> read 工具自动执行
+  -> write / external 工具进入 waiting_approval
+  -> 执行结果写入 data/tasks/<task-id>.json
+  -> 前端执行时间线展示完成、失败或待确认状态
+```
+
+当前提供：
+
+- `web.search`：搜索公开网页，返回来源、链接和摘要。
+- `memory.search`：只读检索活跃长期记忆，不修改 `memory.md`。
+
+当前阶段先建立可靠的工具执行底座。模型自动选择工具、多步骤 Agent 循环、文件产物和专家团真实调度将在该协议上继续扩展。
 
 ## 记忆流程
 
@@ -121,7 +156,7 @@ data/memory/memory.md           # 由 index.json 中 active 记忆自动渲染�
 
 - 常驻桶：最多 3 条高优先级用户偏好，例如“始终用中文回复”。
 - 检索桶：命中关键词、中文 token 或达到语义相似度阈值后，按混合分数排序。
-- 语义检索：在模型设置里填写可用的 Embedding 模型后启用；向量缓存在本地 `index.json`，调用失败自动降级到关键词检索。启用后，待建向量的活跃记忆内容会发送给当前模型供应商的 Embedding 接口。
+- 语义检索：在模型设置里填写可用的 Embedding 模型后启用；向量缓存在本地 `embeddings.json` sidecar，调用失败自动降级到关键词检索。启用后，待建向量的活跃记忆内容会发送给当前模型供应商的 Embedding 接口。
 - 引用解释：助手回复下方可展开查看本轮实际引用了哪些记忆。
 
 ### 记忆整理

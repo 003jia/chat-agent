@@ -1,6 +1,8 @@
 import { createId } from "./ids.mjs";
 import { callModelJson } from "./model.mjs";
 import {
+  MEMORY_ACCESS_HEAT_WEIGHT,
+  MEMORY_CONFLICT_CONTEXT_LIMIT,
   MEMORY_MIN_CONTENT_LENGTH,
   MEMORY_MIN_KEYWORD_MATCHES,
   MEMORY_RECENCY_WINDOW_DAYS,
@@ -14,7 +16,7 @@ import {
 
 const validTypes = new Set(["user_preference", "project_fact", "conversation_summary"]);
 const validLevels = new Set(["high", "medium", "low"]);
-const validStatuses = new Set(["active", "candidate", "disabled"]);
+const validStatuses = new Set(["active", "candidate", "disabled", "deleted"]);
 const validOps = new Set(["add", "update", "disable", "noop"]);
 const cjkStopwords = new Set(["我", "你", "他", "她", "它", "们", "的", "了", "和", "是", "在", "有", "用", "请", "要", "不", "会", "这", "那", "个", "一", "就", "都", "也", "很", "把", "给", "与", "或"]);
 
@@ -40,7 +42,8 @@ export function selectRelevantMemories(message, memoryItems, strictRetrieval, op
         : null;
       const levelWeight = item.level === "high" ? 3 : item.level === "medium" ? 2 : 1;
       const semanticScore = semanticSimilarity === null ? 0 : Math.max(0, semanticSimilarity) * MEMORY_SEMANTIC_SCORE_WEIGHT;
-      const score = keywordHits * 2 + semanticScore + recencyBoost(item.updatedAt) + levelWeight * 0.5;
+      const accessHeat = Math.log2(1 + (Number(item.accessCount) || 0)) * MEMORY_ACCESS_HEAT_WEIGHT;
+      const score = keywordHits * 2 + semanticScore + recencyBoost(item.updatedAt) + levelWeight * 0.5 + accessHeat;
       const mode = keywordHits > 0 && semanticSimilarity !== null && semanticSimilarity >= semanticThreshold
         ? "hybrid"
         : keywordHits > 0
@@ -55,9 +58,14 @@ export function selectRelevantMemories(message, memoryItems, strictRetrieval, op
     })
     .filter((entry) => entry.keywordHits >= MEMORY_MIN_KEYWORD_MATCHES || (entry.semanticSimilarity !== null && entry.semanticSimilarity >= semanticThreshold));
   scored.sort((a, b) => b.score - a.score);
+  const deduped = [];
+  for (const entry of scored) {
+    if (deduped.some((kept) => isRetrievalDuplicate(kept.item, entry.item))) continue;
+    deduped.push(entry);
+  }
   return [
     ...resident.map((item) => withRetrievalMeta(item, { score: null, keywordHits: null, semanticSimilarity: null, resident: true, mode: "resident" })),
-    ...scored.slice(0, Math.max(0, totalLimit - resident.length)).map((entry) => entry.item)
+    ...deduped.slice(0, Math.max(0, totalLimit - resident.length)).map((entry) => entry.item)
   ];
 }
 
@@ -97,7 +105,7 @@ export async function extractCandidatesWithModel(provider, agentConfig, input) {
   const extractionInput = typeof input === "string" ? { userContent: input } : input || {};
   const content = String(extractionInput.userContent || "").trim();
   if (!content) return { candidates: [], error: null };
-  const existingMemories = normalizeMemoryItems(extractionInput.existingMemories || []).filter((item) => item.status === "active").slice(0, 24);
+  const existingMemories = normalizeMemoryItems(extractionInput.existingMemories || []).filter((item) => item.status === "active").slice(0, MEMORY_CONFLICT_CONTEXT_LIMIT);
   const recentMessages = Array.isArray(extractionInput.recentMessages) ? extractionInput.recentMessages.slice(-8) : [];
   const messages = [
     {
@@ -115,7 +123,7 @@ export async function extractCandidatesWithModel(provider, agentConfig, input) {
       role: "user",
       content: [
         "现有活跃记忆：",
-        JSON.stringify(existingMemories.map((item) => ({ id: item.id, type: item.type, level: item.level, content: item.content })).slice(0, 24)),
+        JSON.stringify(existingMemories.map((item) => ({ id: item.id, type: item.type, level: item.level, content: item.content }))),
         "最近对话：",
         JSON.stringify(recentMessages.map((message) => ({ role: message.role, content: summarizeText(message.content, MEMORY_SUMMARY_CHAR_LIMIT) }))),
         "本轮用户消息：",
@@ -439,6 +447,79 @@ export function updateMemoryAccess(items, memoryIds, now = new Date().toISOStrin
   });
 }
 
+export function splitMemoryEmbeddings(items) {
+  const embeddings = {};
+  const stripped = normalizeMemoryItems(items).map((item) => {
+    const { embedding, embeddingModel, embeddingHash, embeddingUpdatedAt, ...rest } = item;
+    if (embedding?.length && embeddingModel && embeddingHash) {
+      embeddings[item.id] = { embedding, embeddingModel, embeddingHash, embeddingUpdatedAt };
+    }
+    return rest;
+  });
+  return { items: stripped, embeddings };
+}
+
+export function hydrateMemoryEmbeddings(items, embeddings) {
+  const store = embeddings && typeof embeddings === "object" ? embeddings : {};
+  return normalizeMemoryItems(items).map((item) => {
+    const cached = store[item.id];
+    if (!cached || cached.embeddingHash !== item.hash) return item;
+    return normalizeMemoryItem({
+      ...item,
+      embedding: cached.embedding,
+      embeddingModel: cached.embeddingModel,
+      embeddingHash: cached.embeddingHash,
+      embeddingUpdatedAt: cached.embeddingUpdatedAt
+    });
+  });
+}
+
+export function pruneMemoryEmbeddings(items, embeddings) {
+  const liveIds = new Set(normalizeMemoryItems(items).map((item) => item.id));
+  return Object.fromEntries(Object.entries(embeddings || {}).filter(([id]) => liveIds.has(id)));
+}
+
+export function selectConflictContext(message, memoryItems, limit = MEMORY_CONFLICT_CONTEXT_LIMIT) {
+  const budget = Math.max(0, Number(limit) || 0);
+  if (!budget) return [];
+  const keywords = tokenizeMemoryText(message);
+  return normalizeMemoryItems(memoryItems)
+    .filter((item) => item.status === "active")
+    .map((item) => {
+      const itemTokens = item.keywords?.length ? new Set(item.keywords) : tokenizeMemoryText(`${item.content} ${item.type}`);
+      const levelWeight = item.level === "high" ? 3 : item.level === "medium" ? 2 : 1;
+      const score = countKeywordHits(keywords, itemTokens) * 2 + recencyBoost(item.updatedAt) + levelWeight * 0.5;
+      return { item, score };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, budget)
+    .map((entry) => entry.item);
+}
+
+export function softDeleteMemoryItem(items, memoryId, now = new Date().toISOString()) {
+  let deleted = null;
+  const nextItems = normalizeMemoryItems(items, now).map((item) => {
+    if (item.id !== memoryId) return item;
+    deleted = normalizeMemoryItem({ ...item, status: "deleted", updatedAt: now }, now);
+    return deleted;
+  });
+  return { found: Boolean(deleted), items: nextItems, item: deleted };
+}
+
+export function purgeDeletedMemoryItems(items, now = new Date().toISOString()) {
+  const normalized = normalizeMemoryItems(items, now);
+  const purgedIds = new Set(normalized.filter((item) => item.status === "deleted").map((item) => item.id));
+  const remaining = normalized
+    .filter((item) => !purgedIds.has(item.id))
+    .map((item) => {
+      const next = { ...item };
+      if (next.supersededBy && purgedIds.has(next.supersededBy)) delete next.supersededBy;
+      if (next.supersedes) next.supersedes = next.supersedes.filter((id) => !purgedIds.has(id));
+      return next;
+    });
+  return { items: remaining, purged: purgedIds.size };
+}
+
 function normalizeModelCandidates(candidates, existingMemories = [], source = "chat") {
   if (!Array.isArray(candidates)) return [];
   const now = new Date().toISOString();
@@ -618,6 +699,20 @@ function isNearDuplicateMemory(a, b) {
   }
   const ratio = overlap / Math.min(aTokens.size, bTokens.size);
   return overlap >= 3 && ratio >= 0.6;
+}
+
+function isRetrievalDuplicate(a, b) {
+  if (a.type !== b.type) return false;
+  if (a.hash && b.hash && a.hash === b.hash) return true;
+  const aTokens = new Set(tokenizeMemoryText(a.content));
+  const bTokens = new Set(tokenizeMemoryText(b.content));
+  if (!aTokens.size || !bTokens.size) return false;
+  let overlap = 0;
+  for (const token of aTokens) {
+    if (bTokens.has(token)) overlap += 1;
+  }
+  const ratio = overlap / Math.min(aTokens.size, bTokens.size);
+  return overlap >= 4 && ratio >= 0.95;
 }
 
 function chooseMemoryKeeper(a, b) {

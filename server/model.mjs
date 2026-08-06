@@ -212,7 +212,12 @@ function parseOpenAIEventBlocks(eventBlocks) {
       .map((line) => line.slice(6).trim());
     for (const data of dataLines) {
       if (!data || data === "[DONE]") continue;
-      const payloadChunk = JSON.parse(data);
+      let payloadChunk;
+      try {
+        payloadChunk = JSON.parse(data);
+      } catch (error) {
+        continue;
+      }
       const delta = payloadChunk?.choices?.[0]?.delta?.content || "";
       if (delta) deltas.push(delta);
     }
@@ -229,7 +234,12 @@ function parseAnthropicEventBlocks(eventBlocks) {
       .map((line) => line.slice(6).trim());
     for (const data of dataLines) {
       if (!data) continue;
-      const payloadChunk = JSON.parse(data);
+      let payloadChunk;
+      try {
+        payloadChunk = JSON.parse(data);
+      } catch (error) {
+        continue;
+      }
       const delta = payloadChunk?.delta?.text || "";
       if (payloadChunk?.type === "content_block_delta" && delta) deltas.push(delta);
     }

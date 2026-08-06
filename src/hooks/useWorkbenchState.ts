@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { api, getAdminToken, setAdminToken } from "../api";
 import { getUiText } from "../i18n";
-import type { AgentConfig, ApiWarning, ChatMessage, Conversation, ConversationSummary, ExpertTeam, ExpertTeamStore, MemoryItem, MemoryState, ModelConfig, RoleStore, WebSearchResponse } from "../types";
+import type { AgentConfig, AgentTask, AgentTool, ApiWarning, ChatMessage, Conversation, ConversationSearchResult, ConversationSummary, ExpertTeam, ExpertTeamStore, MemoryItem, MemoryState, ModelConfig, RoleStore, WebSearchResponse } from "../types";
 import type { ActivePanel, BusyAction, ChatMode, PanelPhase, WorkbenchProps } from "../workbenchTypes";
 
 const panelMotionMs = 240;
@@ -16,6 +16,7 @@ export function useWorkbenchState() {
   const [pendingCandidates, setPendingCandidates] = useState<MemoryItem[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
+  const [bootVersion, setBootVersion] = useState(0);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -29,6 +30,8 @@ export function useWorkbenchState() {
   const [activeMode, setActiveMode] = useState<ChatMode>("normal");
   const [generatedSummary, setGeneratedSummary] = useState("");
   const [webSearchState, setWebSearchState] = useState<WebSearchResponse | null>(null);
+  const [tools, setTools] = useState<AgentTool[]>([]);
+  const [tasks, setTasks] = useState<AgentTask[]>([]);
   const [busyAction, setBusyAction] = useState<BusyAction>(null);
   const [statusKey, setStatusKey] = useState(0);
   const [memoryFeedbackKey, setMemoryFeedbackKey] = useState(0);
@@ -40,13 +43,15 @@ export function useWorkbenchState() {
     let mounted = true;
     async function boot() {
       try {
-        const [roles, teams, model, activeConversation, conversationList, memory] = await Promise.all([
+        const [roles, teams, model, activeConversation, conversationList, memory, toolList, taskList] = await Promise.all([
           api.getRoles(),
           api.getTeams(),
           api.getModelConfig(),
           api.getConversation(),
           api.listConversations(),
-          api.getMemory()
+          api.getMemory(),
+          api.listTools(),
+          api.listTasks()
         ]);
         if (!mounted) return;
         setRoleStore(roles);
@@ -68,6 +73,8 @@ export function useWorkbenchState() {
         setConversation(activeConversation);
         setConversations(conversationList.conversations);
         setMemoryState(memory);
+        setTools(toolList.tools);
+        setTasks(taskList.tasks);
       } catch (bootError) {
         setError(errorMessage(bootError));
       } finally {
@@ -78,7 +85,7 @@ export function useWorkbenchState() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [bootVersion]);
 
   useEffect(() => {
     return () => {
@@ -127,7 +134,16 @@ export function useWorkbenchState() {
   function updateAdminToken(value: string) {
     setAdminToken(value);
     setAdminTokenState(value.trim());
+    setError("");
+    setLoading(true);
+    setBootVersion((version) => version + 1);
     showStatus(value.trim() ? text.status.adminTokenSaved : text.status.adminTokenCleared);
+  }
+
+  function retryBoot() {
+    setError("");
+    setLoading(true);
+    setBootVersion((version) => version + 1);
   }
 
   async function updateAgent(next: AgentConfig) {
@@ -333,6 +349,7 @@ export function useWorkbenchState() {
       }
       setConversation(created);
       setConversations(await refreshConversationList());
+      setTasks([]);
       setPendingCandidates([]);
       showStatus(text.status.conversationCreated);
     } catch (createError) {
@@ -350,6 +367,7 @@ export function useWorkbenchState() {
     try {
       const next = await api.getConversation(conversationId);
       setConversation(next);
+      setTasks((await api.listTasks(conversationId)).tasks);
       setPendingCandidates([]);
       showStatus(agentConfig?.language === "en" ? `Switched to conversation "${next.title}"` : `已切换到会话「${next.title}」`);
     } catch (switchError) {
@@ -369,7 +387,10 @@ export function useWorkbenchState() {
       setConversations(list);
       if (conversation?.id === conversationId) {
         const fallback = list[0];
-        if (fallback) setConversation(await api.getConversation(fallback.id));
+        if (fallback) {
+          setConversation(await api.getConversation(fallback.id));
+          setTasks((await api.listTasks(fallback.id)).tasks);
+        }
       }
       showStatus(text.status.conversationDeleted);
     } catch (deleteError) {
@@ -377,6 +398,55 @@ export function useWorkbenchState() {
     } finally {
       setSaving(false);
       setBusyAction(null);
+    }
+  }
+
+  async function updateConversationMetadata(conversationId: string, patch: { title?: string; starred?: boolean }) {
+    setSaving(true);
+    setBusyAction("conversation-update");
+    try {
+      const updated = await api.updateConversation(conversationId, patch);
+      if (conversation?.id === conversationId) setConversation(updated);
+      setConversations(await refreshConversationList());
+      showStatus(agentConfig?.language === "en" ? "Conversation updated" : "会话已更新");
+    } catch (updateError) {
+      setError(errorMessage(updateError));
+    } finally {
+      setSaving(false);
+      setBusyAction(null);
+    }
+  }
+
+  async function renameConversation(conversationId: string, title: string) {
+    const normalizedTitle = title.trim();
+    if (!normalizedTitle) return;
+    await updateConversationMetadata(conversationId, { title: normalizedTitle });
+  }
+
+  async function toggleConversationStarred(conversationId: string, starred: boolean) {
+    await updateConversationMetadata(conversationId, { starred });
+  }
+
+  async function exportConversation(conversationId: string, format: "markdown" | "txt" | "json" = "markdown") {
+    try {
+      const content = await api.exportConversation(conversationId, format);
+      const title = conversations.find((item) => item.id === conversationId)?.title || conversation?.title || "conversation";
+      const extension = format === "markdown" ? "md" : format;
+      downloadText(content, `${sanitizeDownloadName(title)}.${extension}`, format === "json" ? "application/json" : "text/plain");
+      showStatus(agentConfig?.language === "en" ? "Conversation exported" : "会话已导出");
+    } catch (exportError) {
+      setError(errorMessage(exportError));
+    }
+  }
+
+  async function searchConversations(query: string): Promise<ConversationSearchResult[]> {
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) return [];
+    try {
+      return (await api.searchConversations(normalizedQuery)).results;
+    } catch (searchError) {
+      setError(errorMessage(searchError));
+      return [];
     }
   }
 
@@ -659,6 +729,41 @@ export function useWorkbenchState() {
     }
   }
 
+  async function runTool(toolId: string, objective: string, input: Record<string, unknown>) {
+    if (!conversation) return null;
+    const normalizedObjective = objective.trim();
+    if (!normalizedObjective) {
+      notify(agentConfig?.language === "en" ? "Enter a task objective." : "请输入任务目标。");
+      return null;
+    }
+    setSaving(true);
+    setBusyAction("tool-run");
+    setError("");
+    try {
+      const task = await api.executeTool(toolId, {
+        objective: normalizedObjective,
+        conversationId: conversation.id,
+        input
+      });
+      setTasks((current) => [task, ...current.filter((item) => item.id !== task.id)]);
+      const step = task.steps[task.steps.length - 1];
+      const maybeSearch = step?.result?.data as WebSearchResponse | undefined;
+      if (toolId === "web.search" && maybeSearch?.results) {
+        setWebSearchState(maybeSearch);
+      }
+      showStatus(task.status === "completed"
+        ? step?.result?.summary || (agentConfig?.language === "en" ? "Tool completed." : "工具执行完成。")
+        : step?.error?.message || (agentConfig?.language === "en" ? "Tool execution failed." : "工具执行失败。"));
+      return task;
+    } catch (toolError) {
+      setError(errorMessage(toolError));
+      return null;
+    } finally {
+      setSaving(false);
+      setBusyAction(null);
+    }
+  }
+
   function showStatus(message: string) {
     setStatus(message);
     setStatusKey((key) => key + 1);
@@ -817,8 +922,19 @@ export function useWorkbenchState() {
     }
   }
 
-  if (loading || !agentConfig || !roleStore || !teamStore || !modelConfig || !conversation || !memoryState || !selectedProvider) {
+  if (loading) {
     return { loading: true as const };
+  }
+
+  if (!agentConfig || !roleStore || !teamStore || !modelConfig || !conversation || !memoryState || !selectedProvider) {
+    return {
+      loading: false as const,
+      setupRequired: true as const,
+      adminToken,
+      error,
+      updateAdminToken,
+      retryBoot
+    };
   }
 
   const props: WorkbenchProps = {
@@ -843,6 +959,8 @@ export function useWorkbenchState() {
     activeMode,
     generatedSummary,
     webSearchState,
+    tools,
+    tasks,
     busyAction,
     statusKey,
     memoryFeedbackKey,
@@ -869,6 +987,7 @@ export function useWorkbenchState() {
     editMemoryItem,
     organizeMemory,
     runWebSearch,
+    runTool,
     setMobileView,
     openPanel,
     closePanel,
@@ -881,6 +1000,10 @@ export function useWorkbenchState() {
     createConversation,
     switchConversation,
     deleteConversation,
+    renameConversation,
+    toggleConversationStarred,
+    exportConversation,
+    searchConversations,
     setConversationRole,
     toggleMemoryPanel,
     regenerateMessage,
@@ -888,7 +1011,7 @@ export function useWorkbenchState() {
     isRegenerating
   };
 
-  return { loading: false as const, props, mobileView };
+  return { loading: false as const, setupRequired: false as const, props, mobileView };
 }
 
 function createLocalMessage(role: "user" | "assistant", content: string): ChatMessage {
@@ -900,6 +1023,20 @@ function createLocalMessage(role: "user" | "assistant", content: string): ChatMe
     memoryRefs: [],
     candidateMemoryIds: []
   };
+}
+
+function sanitizeDownloadName(value: string) {
+  return String(value || "conversation").replace(/[\\/:*?"<>|]/g, "-").trim() || "conversation";
+}
+
+function downloadText(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function mergePendingCandidates(nextItems: MemoryItem[], currentItems: MemoryItem[]) {

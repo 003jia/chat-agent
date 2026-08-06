@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { PassThrough, Writable } from "node:stream";
@@ -134,13 +134,13 @@ describe("createApp API smoke", () => {
       headers: { "X-Admin-Token": "secret" },
       body: { message: "给我一些界面风格建议" }
     });
-    const saved = JSON.parse(await readFile(path.join(server.paths.memoryDir, "index.json"), "utf8"));
+    const saved = JSON.parse(await readFile(path.join(server.paths.memoryDir, "embeddings.json"), "utf8"));
 
     expect(response.status).toBe(200);
     expect(response.json.relevantMemories.map((item) => item.id)).toContain("theme-memory");
     expect(response.json.relevantMemories[0].retrieval.mode).toBe("semantic");
-    expect(saved[0].embeddingModel).toBe("test-embedding");
-    expect(saved[0].embedding).toEqual([0.99, 0.01]);
+    expect(saved["theme-memory"].embeddingModel).toBe("test-embedding");
+    expect(saved["theme-memory"].embedding).toEqual([0.99, 0.01]);
   });
 
   it("falls back to keyword retrieval when embedding calls fail", async () => {
@@ -206,13 +206,14 @@ describe("createApp API smoke", () => {
       }
     });
     await server.waitForBackgroundTasks();
-    const saved = JSON.parse(await readFile(path.join(server.paths.memoryDir, "index.json"), "utf8"));
-    const item = saved.find((memory) => memory.id === "new-memory");
+    const saved = JSON.parse(await readFile(path.join(server.paths.memoryDir, "embeddings.json"), "utf8"));
+    const item = saved["new-memory"];
 
     expect(committed.status).toBe(200);
     expect(item.embedding).toEqual([0.5, 0.5]);
     expect(item.embeddingModel).toBe("test-embedding");
-    expect(item.embeddingHash).toBe(item.hash);
+    const index = JSON.parse(await readFile(path.join(server.paths.memoryDir, "index.json"), "utf8"));
+    expect(item.embeddingHash).toBe(index.find((memory) => memory.id === "new-memory").hash);
   });
 
   it("streams message.done before memory candidate extraction completes", async () => {
@@ -240,7 +241,7 @@ describe("createApp API smoke", () => {
       headers,
       body: { message: "以后请记住我偏好先计划再执行。" }
     });
-    const memory = await invokeApp(server.app, { method: "GET", url: "/api/memory" });
+    const memory = await invokeApp(server.app, { method: "GET", url: "/api/memory", headers });
     const candidate = memory.json.items.find((item) => item.id === "candidate-test");
 
     expect(candidate.status).toBe("candidate");
@@ -307,7 +308,7 @@ describe("createApp API smoke", () => {
         body: { items: [{ id: "memory-b", content: "Beta memory", type: "project_fact", level: "medium", source: "test", status: "candidate" }] }
       })
     ]);
-    const memory = await invokeApp(server.app, { method: "GET", url: "/api/memory" });
+    const memory = await invokeApp(server.app, { method: "GET", url: "/api/memory", headers });
     const ids = memory.json.items.map((item) => item.id);
 
     expect(ids).toContain("memory-a");
@@ -377,6 +378,40 @@ describe("createApp API smoke", () => {
     });
     expect(deleted.status).toBe(200);
     expect(deleted.json.roles.find((role) => role.id === newRoleId)).toBeUndefined();
+  });
+
+  it("supports conversation search, metadata updates, and export", async () => {
+    const server = await createTestApp();
+    const headers = { "X-Admin-Token": "secret" };
+    const updated = await invokeApp(server.app, {
+      method: "PATCH",
+      url: "/api/conversations/default",
+      headers,
+      body: { title: "置顶项目讨论", starred: true }
+    });
+
+    expect(updated.status).toBe(200);
+    expect(updated.json).toMatchObject({ title: "置顶项目讨论", starred: true });
+
+    const list = await invokeApp(server.app, { method: "GET", url: "/api/conversations", headers });
+    expect(list.json.conversations[0]).toMatchObject({ id: "default", starred: true });
+
+    const search = await invokeApp(server.app, {
+      method: "GET",
+      url: "/api/conversations/search?q=%E4%B8%B4%E6%97%B6%E6%83%B3%E6%B3%95",
+      headers
+    });
+    expect(search.status).toBe(200);
+    expect(search.json.results[0]).toMatchObject({ conversationId: "default", role: "user" });
+
+    const exported = await invokeApp(server.app, {
+      method: "GET",
+      url: "/api/conversations/default/export?format=markdown",
+      headers
+    });
+    expect(exported.status).toBe(200);
+    expect(exported.text).toContain("# 置顶项目讨论");
+    expect(exported.headers["content-disposition"]).toContain("attachment");
   });
 
   it("uploads, serves, and resets a role background image", async () => {
@@ -501,7 +536,7 @@ describe("createApp API smoke", () => {
 
   it("exposes and protects the built-in expert-team role", async () => {
     const server = await createTestApp();
-    const roles = await invokeApp(server.app, { method: "GET", url: "/api/roles" });
+    const roles = await invokeApp(server.app, { method: "GET", url: "/api/roles", headers: { "X-Admin-Token": "secret" } });
     const expertRole = roles.json.roles.find((role) => role.id === "role-expert-team-author");
 
     expect(expertRole).toMatchObject({
@@ -533,12 +568,12 @@ describe("createApp API smoke", () => {
     expect(created.status).toBe(201);
     expect(created.json.title).toBe("新的讨论");
 
-    const list = await invokeApp(server.app, { method: "GET", url: "/api/conversations" });
+    const list = await invokeApp(server.app, { method: "GET", url: "/api/conversations", headers });
     const ids = list.json.conversations.map((item) => item.id);
     expect(ids).toContain("default");
     expect(ids).toContain(created.json.id);
 
-    const fetched = await invokeApp(server.app, { method: "GET", url: `/api/conversations/${created.json.id}` });
+    const fetched = await invokeApp(server.app, { method: "GET", url: `/api/conversations/${created.json.id}`, headers });
     expect(fetched.json.id).toBe(created.json.id);
 
     const roleSwitch = await invokeApp(server.app, {
@@ -549,6 +584,229 @@ describe("createApp API smoke", () => {
     });
     expect(roleSwitch.status).toBe(200);
     expect(roleSwitch.json.roleId).toBe("role-default");
+  });
+
+  it("keeps embeddings in a sidecar file instead of the memory index", async () => {
+    const server = await createTestApp();
+    const headers = { "X-Admin-Token": "secret" };
+    const indexPath = path.join(server.paths.memoryDir, "index.json");
+    const sidecarPath = path.join(server.paths.memoryDir, "embeddings.json");
+    const seeded = JSON.parse(await readFile(indexPath, "utf8"));
+    const target = seeded.find((item) => item.id === "api-key-handling");
+    target.embedding = [0.25, 0.5, 0.75];
+    target.embeddingModel = "test-embedding";
+    target.embeddingHash = target.hash;
+    target.embeddingUpdatedAt = new Date().toISOString();
+    await writeFile(indexPath, JSON.stringify(seeded), "utf8");
+
+    const patched = await invokeApp(server.app, {
+      method: "PATCH",
+      url: "/api/memory/verification-habit",
+      headers,
+      body: { level: "high" }
+    });
+    expect(patched.status).toBe(200);
+
+    const nextIndex = JSON.parse(await readFile(indexPath, "utf8"));
+    expect(nextIndex.some((item) => item.embedding !== undefined)).toBe(false);
+    expect(nextIndex.some((item) => item.embeddingModel !== undefined)).toBe(false);
+
+    const sidecar = JSON.parse(await readFile(sidecarPath, "utf8"));
+    expect(sidecar["api-key-handling"].embedding).toEqual([0.25, 0.5, 0.75]);
+    expect(sidecar["api-key-handling"].embeddingModel).toBe("test-embedding");
+    expect(sidecar["verification-habit"]).toBeUndefined();
+  });
+
+  it("batches memory access counters instead of rewriting the index on every read", async () => {
+    const server = await createTestApp({ memoryAccess: { flushThreshold: 100, flushIntervalMs: 0 } });
+    const headers = { "X-Admin-Token": "secret" };
+    const indexPath = path.join(server.paths.memoryDir, "index.json");
+    const before = await readFile(indexPath, "utf8");
+
+    await server.recordMemoryAccess(["project-workflow"]);
+    await server.recordMemoryAccess(["project-workflow"]);
+
+    expect(await readFile(indexPath, "utf8")).toBe(before);
+
+    const pendingView = await invokeApp(server.app, { method: "GET", url: "/api/memory", headers });
+    expect(pendingView.json.items.find((item) => item.id === "project-workflow").accessCount).toBe(2);
+
+    await server.flushMemoryAccess();
+
+    const persisted = JSON.parse(await readFile(indexPath, "utf8"));
+    expect(persisted.find((item) => item.id === "project-workflow").accessCount).toBe(2);
+  });
+
+  it("flushes memory access counters once the batch threshold is reached", async () => {
+    const server = await createTestApp({ memoryAccess: { flushThreshold: 2, flushIntervalMs: 0 } });
+    const indexPath = path.join(server.paths.memoryDir, "index.json");
+
+    await server.recordMemoryAccess(["project-workflow"]);
+    await server.recordMemoryAccess(["api-key-handling"]);
+    await server.waitForBackgroundTasks();
+
+    const persisted = JSON.parse(await readFile(indexPath, "utf8"));
+    expect(persisted.find((item) => item.id === "project-workflow").accessCount).toBe(1);
+    expect(persisted.find((item) => item.id === "api-key-handling").accessCount).toBe(1);
+  });
+
+  it("soft-deletes a memory and keeps the record on disk until purged", async () => {
+    const server = await createTestApp();
+    const headers = { "X-Admin-Token": "secret" };
+    const indexPath = path.join(server.paths.memoryDir, "index.json");
+
+    const deleted = await invokeApp(server.app, {
+      method: "DELETE",
+      url: "/api/memory/api-key-handling",
+      headers
+    });
+
+    expect(deleted.status).toBe(200);
+    expect(deleted.json.item.status).toBe("deleted");
+
+    const persisted = JSON.parse(await readFile(indexPath, "utf8"));
+    expect(persisted.find((item) => item.id === "api-key-handling").status).toBe("deleted");
+
+    const listed = await invokeApp(server.app, { method: "GET", url: "/api/memory", headers });
+    expect(listed.json.items.some((item) => item.id === "api-key-handling")).toBe(false);
+    expect(listed.json.stats.deleted).toBe(1);
+
+    const markdown = await readFile(path.join(server.paths.memoryDir, "memory.md"), "utf8");
+    expect(markdown).not.toContain("Visible API entry");
+
+    const purged = await invokeApp(server.app, { method: "POST", url: "/api/memory/purge", headers });
+    expect(purged.status).toBe(200);
+    expect(purged.json.purged).toBe(1);
+
+    const afterPurge = JSON.parse(await readFile(indexPath, "utf8"));
+    expect(afterPurge.some((item) => item.id === "api-key-handling")).toBe(false);
+  });
+
+  it("returns 404 when soft-deleting an unknown memory", async () => {
+    const server = await createTestApp();
+    const response = await invokeApp(server.app, {
+      method: "DELETE",
+      url: "/api/memory/does-not-exist",
+      headers: { "X-Admin-Token": "secret" }
+    });
+
+    expect(response.status).toBe(404);
+    expect(response.json.code).toBe("MEMORY_NOT_FOUND");
+  });
+
+  it("leaves no temporary files behind when persisting memory", async () => {
+    const server = await createTestApp();
+    await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/memory/commit",
+      headers: { "X-Admin-Token": "secret" },
+      body: { items: [{ id: "memory-atomic", content: "原子写入校验记忆", type: "project_fact", level: "medium", source: "test", status: "candidate" }] }
+    });
+
+    const entries = await readdir(server.paths.memoryDir);
+    expect(entries.filter((name) => name.endsWith(".tmp"))).toEqual([]);
+  });
+
+  it("passes a bounded, relevance-ranked conflict context to the extraction model", async () => {
+    let receivedExisting = null;
+    const server = await createTestApp({
+      modelClient: {
+        extractCandidatesWithModel: async (_provider, _agentConfig, input) => {
+          receivedExisting = input.existingMemories;
+          return { candidates: [], error: null };
+        }
+      }
+    });
+    const headers = { "X-Admin-Token": "secret" };
+    const bulk = Array.from({ length: 40 }, (_item, index) => ({
+      id: `memory-bulk-${index}`,
+      content: `无关的批量记忆条目编号 ${index}`,
+      type: "project_fact",
+      level: "low",
+      source: "test",
+      status: "candidate"
+    }));
+    bulk.push({
+      id: "memory-express",
+      content: "项目使用 Express 后端提供接口",
+      type: "project_fact",
+      level: "high",
+      source: "test",
+      status: "candidate"
+    });
+    await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/memory/commit",
+      headers,
+      body: { items: bulk }
+    });
+
+    await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/chat",
+      headers,
+      body: { message: "把 Express 后端换成 Fastify 吧" }
+    });
+
+    expect(Array.isArray(receivedExisting)).toBe(true);
+    expect(receivedExisting.length).toBeLessThanOrEqual(16);
+    expect(receivedExisting.map((item) => item.id)).toContain("memory-express");
+    expect(receivedExisting.every((item) => item.status === "active")).toBe(true);
+  });
+
+  it("lists registered tools and persists a completed read-tool task", async () => {
+    const server = await createTestApp();
+    const headers = { "X-Admin-Token": "secret" };
+    const tools = await invokeApp(server.app, {
+      method: "GET",
+      url: "/api/tools",
+      headers
+    });
+
+    expect(tools.status).toBe(200);
+    expect(tools.json.tools.map((tool) => tool.id)).toEqual(["web.search", "memory.search"]);
+    expect(tools.json.tools.every((tool) => tool.execute === undefined)).toBe(true);
+
+    const execution = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/tools/memory.search/execute",
+      headers,
+      body: {
+        objective: "查找计划偏好",
+        conversationId: "default",
+        input: { query: "计划", limit: 3 }
+      }
+    });
+
+    expect(execution.status).toBe(201);
+    expect(execution.json.status).toBe("completed");
+    expect(execution.json.steps[0]).toMatchObject({
+      toolId: "memory.search",
+      permission: "read",
+      status: "completed"
+    });
+
+    const tasks = await invokeApp(server.app, {
+      method: "GET",
+      url: "/api/tasks?conversationId=default",
+      headers
+    });
+    expect(tasks.json.tasks[0].id).toBe(execution.json.id);
+    expect(await readFile(path.join(server.paths.tasksDir, `${execution.json.id}.json`), "utf8")).toContain("memory.search");
+  });
+
+  it("rejects invalid tool input before creating a task", async () => {
+    const server = await createTestApp();
+    const response = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/tools/memory.search/execute",
+      headers: { "X-Admin-Token": "secret" },
+      body: { input: { query: "", limit: 99 } }
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.json.code).toBe("TOOL_INPUT_INVALID");
+    expect(await readdir(server.paths.tasksDir)).toHaveLength(0);
   });
 });
 

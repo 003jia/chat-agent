@@ -1,4 +1,4 @@
-import { Bot, BrainCircuit, Copy, Database, FileText, Globe2, Loader2, RefreshCw, Search, Send, SlidersHorizontal, Wrench } from "lucide-react";
+import { Bot, BrainCircuit, Copy, Database, FileText, Gauge, Globe2, Loader2, RefreshCw, Search, Send, SlidersHorizontal, Sparkles, Wrench } from "lucide-react";
 import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
@@ -18,8 +18,11 @@ export function ChatPanel({
   statusKey,
   error,
   activeMode,
+  modelConfig,
+  selectedProvider,
   setDraft,
   updateAgent,
+  saveModel,
   sendMessage,
   pendingCandidates,
   openPanel,
@@ -63,6 +66,14 @@ export function ChatPanel({
       </div>
 
       <footer className="composer-zone">
+        <ComposerModelBar
+          agentConfig={agentConfig}
+          conversation={conversation}
+          draft={draft}
+          modelConfig={modelConfig}
+          selectedProvider={selectedProvider}
+          saveModel={saveModel}
+        />
         {agentConfig.quickPrompts?.length ? (
           <div className="role-quick-prompts" aria-label={text.chat.roleQuickPrompts}>
             {agentConfig.quickPrompts.map((prompt) => (
@@ -138,14 +149,63 @@ export function MobileChat(props: WorkbenchProps) {
   );
 }
 
-function ChatPanelMini({ agentConfig, draft, sending, setDraft, sendMessage }: WorkbenchProps) {
+function ChatPanelMini({ agentConfig, conversation, draft, sending, modelConfig, selectedProvider, setDraft, sendMessage, saveModel }: WorkbenchProps) {
   const text = getUiText(agentConfig.language);
   return (
-    <form className="composer mobile" onSubmit={sendMessage}>
-      <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={text.chat.placeholder} />
-      <button className={`send-button ${sending ? "is-sending" : ""}`} type="submit" aria-label={text.chat.send} disabled={sending}>{sending ? <Loader2 className="spin" size={20} /> : <Send size={22} />}</button>
-    </form>
+    <>
+      <ComposerModelBar
+        agentConfig={agentConfig}
+        conversation={conversation}
+        draft={draft}
+        modelConfig={modelConfig}
+        selectedProvider={selectedProvider}
+        saveModel={saveModel}
+        compact
+      />
+      <form className="composer mobile" onSubmit={sendMessage}>
+        <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={text.chat.placeholder} />
+        <button className={`send-button ${sending ? "is-sending" : ""}`} type="submit" aria-label={text.chat.send} disabled={sending}>{sending ? <Loader2 className="spin" size={20} /> : <Send size={22} />}</button>
+      </form>
+    </>
   );
+}
+
+function ComposerModelBar({ agentConfig, conversation, draft, modelConfig, selectedProvider, saveModel, compact = false }: Pick<WorkbenchProps, "agentConfig" | "conversation" | "draft" | "modelConfig" | "selectedProvider" | "saveModel"> & { compact?: boolean }) {
+  const estimatedTokens = estimateConversationTokens(conversation, draft);
+  const contextLength = Math.max(1, selectedProvider.contextLength || 64000);
+  const usagePercent = Math.min(100, Math.round((estimatedTokens / contextLength) * 100));
+  const displayTokens = estimatedTokens >= 1000 ? `${(estimatedTokens / 1000).toFixed(1)}k` : String(estimatedTokens);
+  const displayContext = contextLength >= 1000 ? `${Math.round(contextLength / 1000)}k` : String(contextLength);
+  const contextLabel = agentConfig.language === "en"
+    ? `Context estimate ${displayTokens} / ${displayContext}`
+    : `上下文估算 ${displayTokens} / ${displayContext}`;
+
+  return (
+    <div className={`composer-model-bar ${compact ? "compact" : ""}`}>
+      <label className="composer-model-select">
+        <Sparkles size={14} />
+        <select
+          value={modelConfig.selectedProvider}
+          aria-label={agentConfig.language === "en" ? "Select model provider" : "选择模型供应商"}
+          onChange={(event) => saveModel({ ...modelConfig, selectedProvider: event.target.value as typeof modelConfig.selectedProvider })}
+        >
+          {Object.values(modelConfig.providers).map((provider) => (
+            <option value={provider.id} key={provider.id}>{provider.label} · {provider.model}</option>
+          ))}
+        </select>
+      </label>
+      <div className="context-usage" title={contextLabel} aria-label={contextLabel}>
+        <Gauge size={14} />
+        {!compact && <span>{displayTokens} / {displayContext}</span>}
+        <i><b style={{ width: `${Math.max(2, usagePercent)}%` }} /></i>
+      </div>
+    </div>
+  );
+}
+
+function estimateConversationTokens(conversation: Conversation, draft: string) {
+  const characters = conversation.messages.reduce((total, message) => total + String(message.content || "").length, 0) + draft.length;
+  return Math.max(0, Math.ceil(characters / 2));
 }
 
 export function MessageBubble({ message, compact = false, language = "zh", referencedMemories = [], onCopy, onRegenerate, isStreaming = false }: {

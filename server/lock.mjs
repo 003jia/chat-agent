@@ -3,7 +3,7 @@ export function createMutex() {
 
   return async function withLock(operation) {
     const run = tail.catch(() => undefined).then(operation);
-    tail = run.finally(() => undefined);
+    tail = run.then(() => undefined, () => undefined);
     return await run;
   };
 }

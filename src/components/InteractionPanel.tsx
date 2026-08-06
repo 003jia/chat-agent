@@ -1,6 +1,7 @@
-import { CheckCircle2, ClipboardList, Database, FileText, Globe2, Loader2, Mic, Paperclip, Search, Send, X } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { AlertCircle, CheckCircle2, ClipboardList, Clock3, Database, FileText, Globe2, Loader2, Mic, Paperclip, Play, Search, Send, ShieldCheck, X } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
 import { getUiText } from "../i18n";
+import type { ConversationSearchResult } from "../types";
 import type { WorkbenchProps, ActivePanel } from "../workbenchTypes";
 import { AgentEditorPanel, SettingsPanel } from "./SettingsPanels";
 import { MemoryDetailPanel } from "./MemoryPanel";
@@ -37,16 +38,42 @@ export function InteractionPanel(props: WorkbenchProps) {
   );
 }
 
-function SearchPanel({ agentConfig, conversation, memoryState }: WorkbenchProps) {
+function SearchPanel({ agentConfig, conversation, memoryState, searchConversations, switchConversation, closePanel }: WorkbenchProps) {
   const [query, setQuery] = useState("");
+  const [globalResults, setGlobalResults] = useState<ConversationSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const text = getUiText(agentConfig.language);
   const normalized = query.trim().toLowerCase();
-  const messages = normalized
-    ? conversation.messages.filter((message) => message.content.toLowerCase().includes(normalized))
-    : conversation.messages.slice(-5);
+  const messages = normalized ? [] : conversation.messages.slice(-5);
   const memories = normalized
     ? memoryState.items.filter((item) => `${item.content} ${item.type}`.toLowerCase().includes(normalized))
     : memoryState.items.slice(0, 5);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!normalized) {
+      setGlobalResults([]);
+      setSearching(false);
+      return () => { cancelled = true; };
+    }
+    setSearching(true);
+    const timer = window.setTimeout(async () => {
+      const results = await searchConversations(normalized);
+      if (!cancelled) {
+        setGlobalResults(results);
+        setSearching(false);
+      }
+    }, 180);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [normalized]);
+
+  async function openSearchResult(result: ConversationSearchResult) {
+    await switchConversation(result.conversationId);
+    closePanel();
+  }
 
   return (
     <div className="drawer-body">
@@ -55,15 +82,21 @@ function SearchPanel({ agentConfig, conversation, memoryState }: WorkbenchProps)
         <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={text.searchPanel.placeholder} />
       </label>
       <section className="drawer-section">
-        <h3>{text.searchPanel.messages}</h3>
+        <h3>{normalized ? (agentConfig.language === "en" ? "All conversations" : "全部会话") : text.searchPanel.messages}</h3>
         <div className="result-list">
-          {messages.map((message) => (
+          {normalized ? globalResults.map((result) => (
+            <button type="button" className="result-row search-result-button" key={`${result.conversationId}-${result.messageId}`} onClick={() => openSearchResult(result)}>
+              <strong>{result.conversationTitle} · {result.role === "user" ? text.common.user : text.common.assistant}</strong>
+              <p>{result.snippet}</p>
+            </button>
+          )) : messages.map((message) => (
             <div className="result-row" key={message.id}>
               <strong>{message.role === "user" ? text.common.user : text.common.assistant}</strong>
               <p>{message.content}</p>
             </div>
           ))}
-          {!messages.length && <p className="empty-copy">{text.searchPanel.noMessages}</p>}
+          {searching && <p className="empty-copy">{agentConfig.language === "en" ? "Searching..." : "正在搜索..."}</p>}
+          {!searching && !(normalized ? globalResults.length : messages.length) && <p className="empty-copy">{text.searchPanel.noMessages}</p>}
         </div>
       </section>
       <section className="drawer-section">
@@ -138,13 +171,85 @@ function WebSearchPanel({ agentConfig, draft, webSearchState, busyAction, active
   );
 }
 
-function ToolsPanel({ agentConfig, testModel, organizeMemory, generateSummary, commitCandidates, pendingCandidates, saving, busyAction, chooseMode, notify }: WorkbenchProps) {
+function ToolsPanel({ agentConfig, draft, tools, tasks, runTool, testModel, organizeMemory, generateSummary, commitCandidates, pendingCandidates, saving, busyAction, chooseMode, notify }: WorkbenchProps) {
+  const [objective, setObjective] = useState(draft);
   const testing = busyAction === "model-test";
   const organizing = busyAction === "memory-organize";
   const committing = busyAction === "memory-commit";
+  const runningTool = busyAction === "tool-run";
   const text = getUiText(agentConfig.language);
+  const isEnglish = agentConfig.language === "en";
+
+  async function executeTool(toolId: string) {
+    const query = objective.trim();
+    if (!query) {
+      notify(isEnglish ? "Enter a task objective first." : "请先输入任务目标。");
+      return;
+    }
+    await runTool(toolId, query, { query, limit: 5 });
+  }
+
   return (
     <div className="drawer-body">
+      <section className="drawer-section tool-runtime">
+        <div className="section-head">
+          <div>
+            <h3>{isEnglish ? "Agent Tool Runtime" : "智能体工具运行台"}</h3>
+            <p>{isEnglish ? "Read tools run automatically. Every execution is recorded as a task." : "只读工具可自动执行，每次调用都会形成可审计任务记录。"}</p>
+          </div>
+          <span className="runtime-badge"><ShieldCheck size={14} />{isEnglish ? "Controlled" : "受控执行"}</span>
+        </div>
+        <label className="task-objective">
+          <span>{isEnglish ? "Task objective" : "任务目标"}</span>
+          <textarea
+            value={objective}
+            onChange={(event) => setObjective(event.target.value)}
+            placeholder={isEnglish ? "Describe what the tool should find or verify..." : "描述需要工具查找或验证的内容..."}
+            maxLength={500}
+          />
+        </label>
+        <div className="tool-grid registered-tools">
+          {tools.map((tool) => (
+            <button type="button" key={tool.id} onClick={() => executeTool(tool.id)} disabled={runningTool || !objective.trim()}>
+              {runningTool ? <Loader2 className="spin" size={18} /> : tool.id === "web.search" ? <Globe2 size={18} /> : <Database size={18} />}
+              <strong>{tool.name}</strong>
+              <span>{tool.description}</span>
+              <small><ShieldCheck size={12} />{tool.permission === "read" ? (isEnglish ? "Read-only · auto" : "只读 · 自动执行") : (isEnglish ? "Approval required" : "需要人工确认")}</small>
+              <Play className="tool-play" size={15} />
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="drawer-section task-timeline">
+        <div className="section-head">
+          <h3>{isEnglish ? "Execution timeline" : "执行时间线"}</h3>
+          <span>{isEnglish ? `${tasks.length} tasks` : `${tasks.length} 个任务`}</span>
+        </div>
+        <div className="task-list">
+          {tasks.slice(0, 8).map((task) => {
+            const step = task.steps[task.steps.length - 1];
+            const failed = task.status === "failed";
+            return (
+              <article className={`task-record ${task.status}`} key={task.id}>
+                <div className="task-status-icon">
+                  {task.status === "running" ? <Loader2 className="spin" size={16} /> : failed ? <AlertCircle size={16} /> : task.status === "waiting_approval" ? <Clock3 size={16} /> : <CheckCircle2 size={16} />}
+                </div>
+                <div>
+                  <strong>{task.title}</strong>
+                  <p>{step?.result?.summary || step?.error?.message || task.objective}</p>
+                  <small>{step?.title || step?.toolId} · {formatTaskTime(task.updatedAt, agentConfig.language)}</small>
+                </div>
+                <span className="task-status-label">{taskStatusLabel(task.status, agentConfig.language)}</span>
+              </article>
+            );
+          })}
+          {!tasks.length && <p className="empty-copy">{isEnglish ? "No tool executions yet." : "暂无工具执行记录。"}</p>}
+        </div>
+      </section>
+
+      <section className="drawer-section">
+        <h3>{isEnglish ? "Workspace actions" : "工作台操作"}</h3>
       <div className="tool-grid">
         <button type="button" onClick={testModel} disabled={testing || saving}>{testing ? <Loader2 className="spin" size={18} /> : <CheckCircle2 size={18} />}<strong>{testing ? text.model.testing : text.toolsPanel.testModel}</strong><span>{text.toolsPanel.testModelHint}</span></button>
         <button type="button" onClick={() => chooseMode("web")}><Globe2 size={18} /><strong>{text.chat.webSearch}</strong><span>{text.toolsPanel.webSearchHint}</span></button>
@@ -154,6 +259,7 @@ function ToolsPanel({ agentConfig, testModel, organizeMemory, generateSummary, c
         <button type="button" onClick={() => notify(text.status.attachmentReady)}><Paperclip size={18} /><strong>{text.toolsPanel.attachment}</strong><span>{text.toolsPanel.attachmentHint}</span></button>
         <button type="button" onClick={() => notify(text.status.voiceReady)}><Mic size={18} /><strong>{text.toolsPanel.voice}</strong><span>{text.toolsPanel.voiceHint}</span></button>
       </div>
+      </section>
     </div>
   );
 }
@@ -169,4 +275,20 @@ function SummaryPanel({ agentConfig, generatedSummary, generateSummary, saveSumm
       <pre className="markdown-preview">{generatedSummary || text.common.noSummary}</pre>
     </div>
   );
+}
+
+function taskStatusLabel(status: WorkbenchProps["tasks"][number]["status"], language: "zh" | "en") {
+  const labels = language === "en"
+    ? { waiting_approval: "Approval", running: "Running", completed: "Completed", failed: "Failed", cancelled: "Cancelled" }
+    : { waiting_approval: "待确认", running: "执行中", completed: "已完成", failed: "失败", cancelled: "已取消" };
+  return labels[status];
+}
+
+function formatTaskTime(value: string, language: "zh" | "en") {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
 }

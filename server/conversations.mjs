@@ -2,6 +2,7 @@ export const seedConversation = {
   id: "default",
   title: "产品策略讨论",
   roleId: "role-default",
+  starred: false,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   messages: [
@@ -39,6 +40,7 @@ export function createSeedConversation(conversationId = "default", roleId = "rol
     id: conversationId,
     title: conversationId === "default" ? seedConversation.title : "新对话",
     roleId,
+    starred: false,
     createdAt: now,
     updatedAt: now,
     messages:
@@ -51,4 +53,90 @@ export function createSeedConversation(conversationId = "default", roleId = "rol
           }))
         : []
   };
+}
+
+export function normalizeConversation(conversation, fallback = {}) {
+  const source = conversation && typeof conversation === "object" ? conversation : fallback;
+  const now = new Date().toISOString();
+  return {
+    ...source,
+    id: String(source.id || fallback.id || "default"),
+    title: String(source.title || "新对话").trim().slice(0, 80) || "新对话",
+    roleId: String(source.roleId || fallback.roleId || "role-default"),
+    starred: Boolean(source.starred),
+    createdAt: source.createdAt || fallback.createdAt || now,
+    updatedAt: source.updatedAt || fallback.updatedAt || now,
+    messages: Array.isArray(source.messages) ? source.messages : []
+  };
+}
+
+export function summarizeConversation(conversation) {
+  const normalized = normalizeConversation(conversation);
+  return {
+    id: normalized.id,
+    title: normalized.title,
+    roleId: normalized.roleId,
+    starred: normalized.starred,
+    createdAt: normalized.createdAt,
+    updatedAt: normalized.updatedAt,
+    messageCount: normalized.messages.length
+  };
+}
+
+export function searchConversationMessages(conversations, query, limit = 50) {
+  const normalizedQuery = String(query || "").trim().toLowerCase();
+  if (!normalizedQuery) return [];
+  const boundedLimit = Math.min(100, Math.max(1, Number(limit) || 50));
+  const results = [];
+  for (const rawConversation of conversations || []) {
+    const conversation = normalizeConversation(rawConversation);
+    const titleMatches = conversation.title.toLowerCase().includes(normalizedQuery);
+    for (const message of conversation.messages) {
+      const content = String(message.content || "");
+      if (!titleMatches && !content.toLowerCase().includes(normalizedQuery)) continue;
+      results.push({
+        conversationId: conversation.id,
+        conversationTitle: conversation.title,
+        messageId: String(message.id || ""),
+        role: message.role === "user" ? "user" : "assistant",
+        snippet: createSearchSnippet(content, normalizedQuery),
+        timestamp: message.timestamp || conversation.updatedAt
+      });
+    }
+  }
+  return results
+    .sort((left, right) => (left.timestamp < right.timestamp ? 1 : -1))
+    .slice(0, boundedLimit);
+}
+
+export function renderConversationExport(conversation, format = "markdown") {
+  const normalized = normalizeConversation(conversation);
+  const exportFormat = String(format || "markdown").toLowerCase();
+  if (exportFormat === "json") {
+    return `${JSON.stringify(normalized, null, 2)}\n`;
+  }
+  if (exportFormat === "txt" || exportFormat === "text") {
+    const lines = [normalized.title, "=".repeat(Math.max(4, normalized.title.length)), ""];
+    for (const message of normalized.messages) {
+      lines.push(`${message.role === "user" ? "用户" : "智能体"} · ${message.timestamp || ""}`.trim());
+      lines.push(String(message.content || "").trim(), "");
+    }
+    return `${lines.join("\n").trim()}\n`;
+  }
+  const lines = [`# ${normalized.title}`, ""];
+  for (const message of normalized.messages) {
+    lines.push(`## ${message.role === "user" ? "用户" : "智能体"}`);
+    if (message.timestamp) lines.push(`_${message.timestamp}_`);
+    lines.push("", String(message.content || "").trim(), "");
+  }
+  return `${lines.join("\n").trim()}\n`;
+}
+
+function createSearchSnippet(content, query) {
+  const compact = String(content || "").replace(/\s+/g, " ").trim();
+  if (compact.length <= 180) return compact;
+  const index = compact.toLowerCase().indexOf(query);
+  const start = Math.max(0, index < 0 ? 0 : index - 60);
+  const end = Math.min(compact.length, start + 180);
+  return `${start > 0 ? "..." : ""}${compact.slice(start, end)}${end < compact.length ? "..." : ""}`;
 }

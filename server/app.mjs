@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { cleanupAtomicFsTemps, writeJsonAtomic, writeTextAtomic } from "./atomic-fs.mjs";
 import { requireAdminToken } from "./auth.mjs";
 import {
   CHAT_RATE_LIMIT_MAX,
@@ -15,13 +16,15 @@ import {
   HISTORY_CHAR_BUDGET_MIN,
   HISTORY_TOKEN_BUDGET_RATIO,
   MAX_CHAT_MESSAGE_LENGTH,
+  MEMORY_ACCESS_FLUSH_INTERVAL_MS,
+  MEMORY_ACCESS_FLUSH_THRESHOLD,
   MEMORY_EMBEDDING_BATCH_LIMIT,
   PORT,
   WRITE_RATE_LIMIT_MAX,
   WRITE_RATE_LIMIT_WINDOW_MS
 } from "./constants.mjs";
 import { defaultAgentConfig, defaultModelConfig, defaultRoleStore, hasProviderEnvApiKey, maskModelConfig, normalizeModelConfig, normalizeRoleStore, providerFromConfig, stripRuntimeModelConfig } from "./config.mjs";
-import { createSeedConversation, seedConversation } from "./conversations.mjs";
+import { createSeedConversation, normalizeConversation, renderConversationExport, searchConversationMessages, seedConversation, summarizeConversation } from "./conversations.mjs";
 import { apiError } from "./errors.mjs";
 import { createId } from "./ids.mjs";
 import { createMutex } from "./lock.mjs";
@@ -33,22 +36,28 @@ import {
   createLocalOrganizeCandidates,
   extractCandidatesWithModel,
   generateCandidatesFromMessages,
+  hydrateMemoryEmbeddings,
   mergeCandidateMemories,
   mergeMemoryEmbeddingUpdates,
   needsMemoryEmbedding,
   normalizeMemoryItems,
   organizeMemoryWithModel,
   organizeMemoryItems,
+  purgeDeletedMemoryItems,
   renderMemoryMarkdown,
+  selectConflictContext,
   selectRelevantMemories,
-  updateMemoryAccess,
+  softDeleteMemoryItem,
+  splitMemoryEmbeddings,
   updateMemoryItemInIndex
 } from "./memory.mjs";
 import { buildSystemPrompt, formatUserMessageForModel } from "./prompt.mjs";
 import { withRetry } from "./retry.mjs";
 import { createSummaryHandler } from "./summary.mjs";
 import { performWebSearch, WEB_SEARCH_RESULT_LIMIT } from "./search.mjs";
+import { completeToolTask, createToolTask, failToolTask, normalizeTask, summarizeTask } from "./tasks.mjs";
 import { emptyTeamStore, normalizeTeamStore } from "./teams.mjs";
+import { createToolRegistry, executeRegisteredTool, getRegisteredTool, listRegisteredTools, validateToolInput } from "./tools.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultRootDir = path.resolve(__dirname, "..");
@@ -73,14 +82,28 @@ export function createApp(options = {}) {
   };
   const allowedOrigins = new Set(options.allowedOrigins || defaultAllowedOrigins);
   const rateLimitOptions = options.rateLimits || {};
+  const memoryAccessOptions = options.memoryAccess || {};
+  const memoryAccessFlushThreshold = Math.max(1, Number(memoryAccessOptions.flushThreshold) || MEMORY_ACCESS_FLUSH_THRESHOLD);
+  const memoryAccessFlushIntervalMs = Math.max(0, Number(memoryAccessOptions.flushIntervalMs ?? MEMORY_ACCESS_FLUSH_INTERVAL_MS));
   const dataDir = path.join(rootDir, "data");
   const configDir = path.join(dataDir, "config");
   const conversationsDir = path.join(dataDir, "conversations");
+  const tasksDir = path.join(dataDir, "tasks");
   const memoryDir = path.join(dataDir, "memory");
   const rawMemoryDir = path.join(memoryDir, "raw");
+  const memoryEmbeddingsPath = path.join(memoryDir, "embeddings.json");
   const backgroundsDir = path.join(dataDir, "backgrounds");
   const memoryWriteLock = createMutex();
+  const taskWriteLock = createMutex();
+  const conversationWriteLock = createMutex();
   const backgroundTasks = new Set();
+  const pendingMemoryAccess = new Map();
+  let memoryAccessTimer = null;
+  const toolRegistry = createToolRegistry({
+    performWebSearch,
+    getMemoryIndex,
+    selectRelevantMemories
+  });
 
   const app = express();
   const adminAuth = requireAdminToken(env);
@@ -104,6 +127,14 @@ export function createApp(options = {}) {
       callback(apiError(403, "CORS_FORBIDDEN", "该 Origin 不允许访问本地 API。"));
     }
   }));
+  app.use((_request, response, next) => {
+    response.set("X-Content-Type-Options", "nosniff");
+    response.set("X-Frame-Options", "DENY");
+    response.set("Referrer-Policy", "no-referrer");
+    response.set("Cross-Origin-Resource-Policy", "same-origin");
+    response.set("Content-Security-Policy", "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'");
+    next();
+  });
   app.use(express.json({ limit: "2mb" }));
   const backgroundUploadParser = express.raw({
     type: ["image/jpeg", "image/png", "image/webp"],
@@ -111,15 +142,22 @@ export function createApp(options = {}) {
   });
 
   async function ensureDataStore() {
+    await cleanupAtomicFsTemps(dataDir);
     await fs.mkdir(configDir, { recursive: true });
     await fs.mkdir(conversationsDir, { recursive: true });
+    await fs.mkdir(tasksDir, { recursive: true });
     await fs.mkdir(rawMemoryDir, { recursive: true });
     await fs.mkdir(backgroundsDir, { recursive: true });
+    await cleanupAtomicFsTemps(dataDir);
+    for (const dir of [dataDir, configDir, conversationsDir, tasksDir, memoryDir, rawMemoryDir, backgroundsDir]) {
+      await fs.chmod(dir, 0o700).catch(() => {});
+    }
     await ensureRoleStore();
     await ensureJson(path.join(configDir, "models.json"), defaultModelConfig);
     await ensureJson(path.join(configDir, "teams.json"), emptyTeamStore);
     await ensureJson(path.join(conversationsDir, "default.json"), seedConversation);
-    await ensureJson(path.join(memoryDir, "index.json"), seedMemoryIndex);
+    await ensureJson(path.join(memoryDir, "index.json"), normalizeMemoryItems(seedMemoryIndex));
+    await ensureJson(memoryEmbeddingsPath, {});
     await ensureText(path.join(memoryDir, "memory.md"), renderMemoryMarkdown(seedMemoryIndex));
   }
 
@@ -174,13 +212,11 @@ export function createApp(options = {}) {
   }
 
   async function writeJson(filePath, value) {
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await retryFileWrite(() => fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8"));
+    await retryFileWrite(() => writeJsonAtomic(filePath, value));
   }
 
   async function writeText(filePath, value) {
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await retryFileWrite(() => fs.writeFile(filePath, value, "utf8"));
+    await retryFileWrite(() => writeTextAtomic(filePath, value));
   }
 
   async function appendText(filePath, value) {
@@ -222,25 +258,82 @@ export function createApp(options = {}) {
   }
 
   async function getMemoryIndex() {
-    return normalizeMemoryItems(await readJson(path.join(memoryDir, "index.json"), []));
+    const [items, embeddings] = await Promise.all([
+      readJson(path.join(memoryDir, "index.json"), []),
+      readJson(memoryEmbeddingsPath, {})
+    ]);
+    return hydrateMemoryEmbeddings(items, embeddings);
   }
 
   async function saveMemoryIndex(items) {
     const normalized = normalizeMemoryItems(items);
-    await writeJson(path.join(memoryDir, "index.json"), normalized);
-    await writeText(path.join(memoryDir, "memory.md"), renderMemoryMarkdown(normalized.filter((item) => item.status === "active")));
+    const split = splitMemoryEmbeddings(normalized);
+    await Promise.all([
+      writeJson(path.join(memoryDir, "index.json"), split.items),
+      writeJson(memoryEmbeddingsPath, split.embeddings),
+      writeText(path.join(memoryDir, "memory.md"), renderMemoryMarkdown(normalized.filter((item) => item.status === "active")))
+    ]);
   }
 
   async function saveMemoryIndexOnly(items) {
-    await writeJson(path.join(memoryDir, "index.json"), normalizeMemoryItems(items));
+    const split = splitMemoryEmbeddings(items);
+    await Promise.all([
+      writeJson(path.join(memoryDir, "index.json"), split.items),
+      writeJson(memoryEmbeddingsPath, split.embeddings)
+    ]);
   }
 
   async function recordMemoryAccess(memoryIds) {
-    if (!memoryIds.length) return;
+    const now = new Date().toISOString();
+    for (const memoryId of new Set(memoryIds || [])) {
+      const pending = pendingMemoryAccess.get(memoryId) || { count: 0, lastAccessedAt: now };
+      pendingMemoryAccess.set(memoryId, {
+        count: pending.count + 1,
+        lastAccessedAt: now
+      });
+    }
+    if (!pendingMemoryAccess.size) return;
+    const pendingCount = Array.from(pendingMemoryAccess.values()).reduce((sum, item) => sum + item.count, 0);
+    if (pendingCount >= memoryAccessFlushThreshold) {
+      queueMemoryAccessFlush();
+      return;
+    }
+    if (memoryAccessFlushIntervalMs > 0 && !memoryAccessTimer) {
+      memoryAccessTimer = setTimeout(() => {
+        memoryAccessTimer = null;
+        queueMemoryAccessFlush();
+      }, memoryAccessFlushIntervalMs);
+      memoryAccessTimer.unref?.();
+    }
+  }
+
+  async function flushMemoryAccess() {
+    if (!pendingMemoryAccess.size) return;
+    if (memoryAccessTimer) {
+      clearTimeout(memoryAccessTimer);
+      memoryAccessTimer = null;
+    }
+    const deltas = new Map(pendingMemoryAccess);
+    pendingMemoryAccess.clear();
     await memoryWriteLock(async () => {
       const current = await getMemoryIndex();
-      await saveMemoryIndexOnly(updateMemoryAccess(current, memoryIds));
+      await saveMemoryIndexOnly(applyMemoryAccessDeltas(current, deltas));
     });
+  }
+
+  function queueMemoryAccessFlush() {
+    const task = flushMemoryAccess()
+      .catch((error) => {
+        logError(logger, error, { operation: "memory-access-flush" });
+      })
+      .finally(() => {
+        backgroundTasks.delete(task);
+      });
+    backgroundTasks.add(task);
+  }
+
+  function getMemoryView(items) {
+    return applyMemoryAccessDeltas(items, pendingMemoryAccess);
   }
 
   async function getSelectedProviderOptional() {
@@ -310,39 +403,81 @@ export function createApp(options = {}) {
 
   async function getConversation(conversationId = "default") {
     const conversation = await readJson(path.join(conversationsDir, `${conversationId}.json`), null);
-    if (conversation) return conversation;
+    if (conversation) return normalizeConversation(conversation, { id: conversationId });
     const roleStore = await getRoleStore();
     return createSeedConversation(conversationId, roleStore.selectedRoleId);
   }
 
   async function saveConversation(conversation) {
-    await writeJson(path.join(conversationsDir, `${conversation.id}.json`), conversation);
+    const normalized = normalizeConversation(conversation);
+    await conversationWriteLock(async () => {
+      await writeJson(path.join(conversationsDir, `${normalized.id}.json`), normalized);
+    });
+    return normalized;
   }
 
-  async function listConversations() {
+  async function getAllConversations() {
     let files = [];
     try {
       files = await fs.readdir(conversationsDir);
     } catch {
       files = [];
     }
-    const summaries = await Promise.all(
+    const conversations = await Promise.all(
       files
         .filter((file) => file.endsWith(".json"))
         .map(async (file) => {
           const conversation = await readJson(path.join(conversationsDir, file), null);
-          if (!conversation) return null;
-          return {
-            id: conversation.id,
-            title: conversation.title,
-            roleId: conversation.roleId || "role-default",
-            createdAt: conversation.createdAt,
-            updatedAt: conversation.updatedAt,
-            messageCount: Array.isArray(conversation.messages) ? conversation.messages.length : 0
-          };
+          return conversation ? normalizeConversation(conversation) : null;
         })
     );
-    return summaries.filter(Boolean).sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+    return conversations.filter(Boolean);
+  }
+
+  async function listConversations() {
+    const summaries = (await getAllConversations()).map(summarizeConversation);
+    return summaries.sort((left, right) => {
+      if (left.starred !== right.starred) return left.starred ? -1 : 1;
+      return left.updatedAt < right.updatedAt ? 1 : -1;
+    });
+  }
+
+  async function getTask(taskId) {
+    validateResourceId(taskId, "任务");
+    const task = await readJson(path.join(tasksDir, `${taskId}.json`), null);
+    if (!task) throw apiError(404, "TASK_NOT_FOUND", "任务不存在。");
+    return normalizeTask(task);
+  }
+
+  async function saveTask(task) {
+    const normalized = normalizeTask(task);
+    validateResourceId(normalized.id, "任务");
+    await taskWriteLock(async () => {
+      await writeJson(path.join(tasksDir, `${normalized.id}.json`), normalized);
+    });
+    return normalized;
+  }
+
+  async function listTasks(conversationId, limit = 30) {
+    let files = [];
+    try {
+      files = await fs.readdir(tasksDir);
+    } catch {
+      files = [];
+    }
+    const boundedLimit = Math.min(100, Math.max(1, Number(limit) || 30));
+    const tasks = await Promise.all(
+      files
+        .filter((file) => file.endsWith(".json"))
+        .map(async (file) => {
+          const task = await readJson(path.join(tasksDir, file), null);
+          return task ? summarizeTask(task) : null;
+        })
+    );
+    return tasks
+      .filter((task) => task && (!conversationId || task.conversationId === conversationId))
+      .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
+      .slice(0, boundedLimit);
   }
 
   async function getRoleStore() {
@@ -401,6 +536,7 @@ export function createApp(options = {}) {
       }),
       memory: await readinessCheck(async () => {
         await readJsonStrict(path.join(memoryDir, "index.json"));
+        await readJsonStrict(memoryEmbeddingsPath);
         await fs.access(path.join(memoryDir, "memory.md"), fs.constants.R_OK | fs.constants.W_OK);
       })
     };
@@ -460,7 +596,17 @@ export function createApp(options = {}) {
       ...selectConversationMessagesForContext(conversation.messages, provider.contextLength).map((item) => ({ role: item.role, content: item.content })),
       { role: "user", content: formatUserMessageForModel(userMessage.content) }
     ];
-    return { agentConfig, provider, conversation, userMessage, relevantMemories, modelMessages, webSearch, webSearchError };
+    return {
+      agentConfig,
+      provider,
+      conversation,
+      userMessage,
+      relevantMemories,
+      candidateConflictMemories: selectConflictContext(content, memoryItems),
+      modelMessages,
+      webSearch,
+      webSearchError
+    };
   }
 
   async function saveCompletedAssistantMessage({ payload, content }) {
@@ -482,11 +628,10 @@ export function createApp(options = {}) {
   }
 
   async function extractCandidatesForAssistantMessage({ payload, assistantMessage }) {
-    const memoryItems = await getMemoryIndex();
     const extraction = await modelClient.extractCandidatesWithModel(payload.provider, payload.agentConfig, {
       userContent: payload.userMessage.content,
       recentMessages: [...payload.conversation.messages.slice(-6), payload.userMessage],
-      existingMemories: memoryItems.filter((item) => item.status === "active")
+      existingMemories: payload.candidateConflictMemories
     });
     const candidates = extraction.candidates;
     if (!candidates.length) {
@@ -536,7 +681,7 @@ export function createApp(options = {}) {
     }
   });
 
-  app.get("/api/roles", async (_request, response, next) => {
+  app.get("/api/roles", adminAuth, async (_request, response, next) => {
     try {
       response.json(await getRoleStore());
     } catch (error) {
@@ -544,7 +689,7 @@ export function createApp(options = {}) {
     }
   });
 
-  app.get("/api/teams", async (_request, response, next) => {
+  app.get("/api/teams", adminAuth, async (_request, response, next) => {
     try {
       response.json(await getTeamStore());
     } catch (error) {
@@ -787,7 +932,7 @@ export function createApp(options = {}) {
     }
   });
 
-  app.get("/api/model-config", async (_request, response, next) => {
+  app.get("/api/model-config", adminAuth, async (_request, response, next) => {
     try {
       const config = normalizeModelConfig(await readJson(path.join(configDir, "models.json"), defaultModelConfig), env);
       response.json(maskModelConfig(config, env));
@@ -840,9 +985,19 @@ export function createApp(options = {}) {
     }
   });
 
-  app.get("/api/conversations", async (_request, response, next) => {
+  app.get("/api/conversations", adminAuth, async (_request, response, next) => {
     try {
       response.json({ conversations: await listConversations() });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/conversations/search", adminAuth, async (request, response, next) => {
+    try {
+      const query = String(request.query?.q || "").trim();
+      if (!query) throw apiError(400, "VALIDATION_ERROR", "请输入会话搜索关键词。");
+      response.json({ results: searchConversationMessages(await getAllConversations(), query, request.query?.limit) });
     } catch (error) {
       next(error);
     }
@@ -863,9 +1018,42 @@ export function createApp(options = {}) {
     }
   });
 
-  app.get("/api/conversations/:conversationId", async (request, response, next) => {
+  app.get("/api/conversations/:conversationId/export", adminAuth, async (request, response, next) => {
+    try {
+      const conversation = await getConversation(request.params.conversationId);
+      const requestedFormat = String(request.query?.format || "markdown").toLowerCase();
+      const format = requestedFormat === "json" ? "json" : requestedFormat === "txt" ? "txt" : "markdown";
+      const extension = format === "markdown" ? "md" : format;
+      const contentType = format === "json" ? "application/json; charset=utf-8" : "text/plain; charset=utf-8";
+      response.setHeader("Content-Type", contentType);
+      response.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(`${conversation.title}.${extension}`)}`);
+      response.send(renderConversationExport(conversation, format));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/conversations/:conversationId", adminAuth, async (request, response, next) => {
     try {
       response.json(await getConversation(request.params.conversationId));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch("/api/conversations/:conversationId", writeLimiter, adminAuth, async (request, response, next) => {
+    try {
+      const conversation = await getConversation(request.params.conversationId);
+      const patch = request.body || {};
+      const title = patch.title === undefined ? conversation.title : String(patch.title).trim().slice(0, 80);
+      if (!title) throw apiError(400, "VALIDATION_ERROR", "会话名称不能为空。");
+      const updated = await saveConversation({
+        ...conversation,
+        title,
+        starred: patch.starred === undefined ? conversation.starred : Boolean(patch.starred),
+        updatedAt: new Date().toISOString()
+      });
+      response.json(updated);
     } catch (error) {
       next(error);
     }
@@ -919,6 +1107,63 @@ export function createApp(options = {}) {
 
   app.get("/api/web-search", chatLimiter, adminAuth, handleWebSearchRequest);
   app.post("/api/web-search", chatLimiter, adminAuth, handleWebSearchRequest);
+
+  app.get("/api/tools", adminAuth, (_request, response) => {
+    response.json({ tools: listRegisteredTools(toolRegistry) });
+  });
+
+  app.get("/api/tasks", adminAuth, async (request, response, next) => {
+    try {
+      response.json({
+        tasks: await listTasks(request.query?.conversationId, request.query?.limit)
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/tasks/:taskId", adminAuth, async (request, response, next) => {
+    try {
+      response.json(await getTask(request.params.taskId));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/tools/:toolId/execute", writeLimiter, adminAuth, async (request, response, next) => {
+    try {
+      const tool = getRegisteredTool(toolRegistry, request.params.toolId);
+      const toolInput = validateToolInput(tool, request.body?.input);
+      const conversationId = String(request.body?.conversationId || "default");
+      const conversation = await getConversation(conversationId);
+      let task = createToolTask({
+        objective: request.body?.objective || tool.description,
+        conversationId,
+        roleId: conversation.roleId,
+        toolInput,
+        approved: Boolean(request.body?.approved)
+      }, tool);
+      task = await saveTask(task);
+      if (task.status === "waiting_approval") {
+        response.status(202).json(task);
+        return;
+      }
+      try {
+        const result = await executeRegisteredTool(toolRegistry, tool.id, toolInput, {
+          approved: Boolean(request.body?.approved),
+          conversationId,
+          roleId: conversation.roleId
+        });
+        task = await saveTask(completeToolTask(task, result));
+      } catch (error) {
+        logError(logger, error, { operation: "tool-execution", toolId: tool.id, taskId: task.id });
+        task = await saveTask(failToolTask(task, error));
+      }
+      response.status(201).json(task);
+    } catch (error) {
+      next(error);
+    }
+  });
 
   app.post("/api/chat", chatLimiter, adminAuth, async (request, response, next) => {
     try {
@@ -992,19 +1237,23 @@ export function createApp(options = {}) {
     }
   });
 
-  app.get("/api/memory", async (_request, response, next) => {
+  app.get("/api/memory", adminAuth, async (_request, response, next) => {
     try {
-      const [items, markdown, editedMinutesAgo] = await Promise.all([
+      const [storedItems, markdown, editedMinutesAgo] = await Promise.all([
         getMemoryIndex(),
         readText(path.join(memoryDir, "memory.md")),
         getMemoryEditedMinutesAgo()
       ]);
+      const allItems = getMemoryView(storedItems);
+      const deleted = allItems.filter((item) => item.status === "deleted").length;
+      const items = allItems.filter((item) => item.status !== "deleted");
       response.json({
         items,
         markdown,
         stats: {
           loaded: items.filter((item) => item.status === "active").length,
           candidates: items.filter((item) => item.status === "candidate").length,
+          deleted,
           editedMinutesAgo
         }
       });
@@ -1013,7 +1262,7 @@ export function createApp(options = {}) {
     }
   });
 
-  app.post("/api/memory/candidates", async (request, response, next) => {
+  app.post("/api/memory/candidates", writeLimiter, adminAuth, async (request, response, next) => {
     try {
       const candidates = generateCandidatesFromMessages(request.body?.messages || []);
       response.json({ candidates });
@@ -1061,10 +1310,24 @@ export function createApp(options = {}) {
     try {
       const result = await memoryWriteLock(async () => {
         const current = await getMemoryIndex();
-        const nextItems = current.filter((item) => item.id !== request.params.memoryId);
-        if (nextItems.length === current.length) throw apiError(404, "MEMORY_NOT_FOUND", "记忆不存在。");
-        await saveMemoryIndex(nextItems);
-        return { items: nextItems };
+        const deleted = softDeleteMemoryItem(current, request.params.memoryId);
+        if (!deleted.found) throw apiError(404, "MEMORY_NOT_FOUND", "记忆不存在。");
+        await saveMemoryIndex(deleted.items);
+        return deleted;
+      });
+      response.json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/memory/purge", writeLimiter, adminAuth, async (_request, response, next) => {
+    try {
+      const result = await memoryWriteLock(async () => {
+        const current = await getMemoryIndex();
+        const purged = purgeDeletedMemoryItems(current);
+        await saveMemoryIndex(purged.items);
+        return purged;
       });
       response.json(result);
     } catch (error) {
@@ -1129,10 +1392,19 @@ export function createApp(options = {}) {
   });
 
   async function waitForBackgroundTasks() {
+    await flushMemoryAccess();
     await Promise.allSettled(Array.from(backgroundTasks));
   }
 
-  return { app, ensureDataStore, checkReadiness, waitForBackgroundTasks, paths: { rootDir, dataDir, configDir, conversationsDir, memoryDir, rawMemoryDir, backgroundsDir } };
+  return {
+    app,
+    ensureDataStore,
+    checkReadiness,
+    waitForBackgroundTasks,
+    recordMemoryAccess,
+    flushMemoryAccess,
+    paths: { rootDir, dataDir, configDir, conversationsDir, tasksDir, memoryDir, rawMemoryDir, backgroundsDir }
+  };
 }
 
 const BACKGROUND_IMAGE_TYPES = {
@@ -1175,6 +1447,27 @@ function validateTeamLead(value, memberRoleIds) {
     throw apiError(400, "VALIDATION_ERROR", "Lead 必须是已加入专家团的角色。");
   }
   return leadRoleId;
+}
+
+function validateResourceId(value, label) {
+  const id = String(value || "");
+  if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
+    throw apiError(400, "VALIDATION_ERROR", `${label} ID 格式无效。`);
+  }
+  return id;
+}
+
+function applyMemoryAccessDeltas(items, deltas) {
+  if (!deltas?.size) return normalizeMemoryItems(items);
+  return normalizeMemoryItems(items).map((item) => {
+    const delta = deltas.get(item.id);
+    if (!delta) return item;
+    return {
+      ...item,
+      accessCount: (Number(item.accessCount) || 0) + delta.count,
+      lastAccessedAt: delta.lastAccessedAt
+    };
+  });
 }
 
 function createRateLimiter(options) {

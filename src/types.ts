@@ -81,6 +81,7 @@ export interface Conversation {
   id: string;
   title: string;
   roleId: string;
+  starred: boolean;
   messages: ChatMessage[];
   createdAt: string;
   updatedAt: string;
@@ -90,9 +91,19 @@ export interface ConversationSummary {
   id: string;
   title: string;
   roleId: string;
+  starred: boolean;
   createdAt: string;
   updatedAt: string;
   messageCount: number;
+}
+
+export interface ConversationSearchResult {
+  conversationId: string;
+  conversationTitle: string;
+  messageId: string;
+  role: "user" | "assistant";
+  snippet: string;
+  timestamp: string;
 }
 
 export interface MemoryItem {
@@ -149,6 +160,56 @@ export interface WebSearchResponse {
   source: string;
   fetchedAt: string;
   results: WebSearchResult[];
+}
+
+export type ToolPermission = "read" | "write" | "external";
+export type TaskStatus = "waiting_approval" | "running" | "completed" | "failed" | "cancelled";
+
+export interface AgentTool {
+  id: string;
+  name: string;
+  description: string;
+  permission: ToolPermission;
+  inputSchema: {
+    type: "object";
+    required?: string[];
+    additionalProperties?: boolean;
+    properties: Record<string, {
+      type: "string" | "integer";
+      minLength?: number;
+      maxLength?: number;
+      minimum?: number;
+      maximum?: number;
+    }>;
+  };
+}
+
+export interface ToolTaskStep {
+  id: string;
+  toolId: string;
+  title: string;
+  permission: ToolPermission;
+  status: TaskStatus;
+  input: Record<string, unknown>;
+  result?: {
+    summary: string;
+    data: unknown;
+  };
+  error?: ApiWarning;
+  startedAt?: string;
+  completedAt?: string;
+}
+
+export interface AgentTask {
+  id: string;
+  title: string;
+  objective: string;
+  conversationId: string;
+  roleId?: string;
+  status: TaskStatus;
+  createdAt: string;
+  updatedAt: string;
+  steps: ToolTaskStep[];
 }
 
 export interface ApiWarning {

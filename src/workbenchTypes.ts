@@ -1,10 +1,10 @@
 import type { FormEvent } from "react";
-import type { AgentConfig, Conversation, ConversationSummary, ExpertTeam, ExpertTeamStore, MemoryItem, MemoryState, ModelConfig, ModelProviderConfig, RoleStore, WebSearchResponse } from "./types";
+import type { AgentConfig, AgentTask, AgentTool, Conversation, ConversationSearchResult, ConversationSummary, ExpertTeam, ExpertTeamStore, MemoryItem, MemoryState, ModelConfig, ModelProviderConfig, RoleStore, WebSearchResponse } from "./types";
 
 export type ActivePanel = "search" | "settings" | "memory" | "tools" | "summary" | "agent" | "webSearch" | "team" | null;
 export type ChatMode = "normal" | "thinking" | "memory" | "tools" | "web";
 export type PanelPhase = "enter" | "exit";
-export type BusyAction = "model-test" | "memory-commit" | "memory-organize" | "web-search" | "role-save" | "team-save" | "conversation-switch" | null;
+export type BusyAction = "model-test" | "memory-commit" | "memory-organize" | "web-search" | "tool-run" | "role-save" | "team-save" | "conversation-switch" | "conversation-update" | null;
 
 export interface WorkbenchProps {
   agentConfig: AgentConfig;
@@ -28,6 +28,8 @@ export interface WorkbenchProps {
   activeMode: ChatMode;
   generatedSummary: string;
   webSearchState: WebSearchResponse | null;
+  tools: AgentTool[];
+  tasks: AgentTask[];
   busyAction: BusyAction;
   statusKey: number;
   memoryFeedbackKey: number;
@@ -54,6 +56,7 @@ export interface WorkbenchProps {
   editMemoryItem: (item: MemoryItem) => Promise<void>;
   organizeMemory: () => Promise<void>;
   runWebSearch: (query: string) => Promise<WebSearchResponse | null>;
+  runTool: (toolId: string, objective: string, input: Record<string, unknown>) => Promise<AgentTask | null>;
   setMobileView: (view: "chat" | "settings") => void;
   openPanel: (panel: Exclude<ActivePanel, null>, message?: string) => void;
   closePanel: () => void;
@@ -66,6 +69,10 @@ export interface WorkbenchProps {
   createConversation: (options?: { title?: string; roleId?: string }) => Promise<void>;
   switchConversation: (conversationId: string) => Promise<void>;
   deleteConversation: (conversationId: string) => Promise<void>;
+  renameConversation: (conversationId: string, title: string) => Promise<void>;
+  toggleConversationStarred: (conversationId: string, starred: boolean) => Promise<void>;
+  exportConversation: (conversationId: string, format?: "markdown" | "txt" | "json") => Promise<void>;
+  searchConversations: (query: string) => Promise<ConversationSearchResult[]>;
   setConversationRole: (roleId: string) => Promise<void>;
   regenerateMessage: () => Promise<void>;
   copyMessage: (content: string) => Promise<void>;

@@ -1,4 +1,4 @@
-import type { AgentConfig, ChatResponse, Conversation, ConversationSummary, ExpertTeam, ExpertTeamStore, MemoryItem, MemoryState, ModelConfig, RoleStore, WebSearchResponse } from "./types";
+import type { AgentConfig, AgentTask, AgentTool, ChatResponse, Conversation, ConversationSearchResult, ConversationSummary, ExpertTeam, ExpertTeamStore, MemoryItem, MemoryState, ModelConfig, RoleStore, WebSearchResponse } from "./types";
 
 const adminTokenStorageKey = "memory-agent-admin-token";
 
@@ -56,6 +56,24 @@ async function requestFile<T>(url: string, file: File): Promise<T> {
     throw error;
   }
   return payload as T;
+}
+
+async function requestText(url: string): Promise<string> {
+  const adminToken = getAdminToken();
+  const response = await fetch(url, {
+    headers: adminToken ? { "X-Admin-Token": adminToken } : {}
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    let message = "请求失败。";
+    try {
+      message = JSON.parse(text)?.message || message;
+    } catch {
+      // Keep the generic message for non-JSON responses.
+    }
+    throw new Error(message);
+  }
+  return text;
 }
 
 export const api = {
@@ -124,6 +142,15 @@ export const api = {
     request<{ ok: true }>(`/api/conversations/${conversationId}`, {
       method: "DELETE"
     }),
+  updateConversation: (conversationId: string, patch: { title?: string; starred?: boolean }) =>
+    request<Conversation>(`/api/conversations/${conversationId}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch)
+    }),
+  searchConversations: (query: string, limit = 50) =>
+    request<{ results: ConversationSearchResult[] }>(`/api/conversations/search?q=${encodeURIComponent(query)}&limit=${limit}`),
+  exportConversation: (conversationId: string, format: "markdown" | "txt" | "json" = "markdown") =>
+    requestText(`/api/conversations/${conversationId}/export?format=${encodeURIComponent(format)}`),
   setConversationRole: (conversationId: string, roleId: string) =>
     request<Conversation>(`/api/conversations/${conversationId}/role`, {
       method: "PUT",
@@ -168,6 +195,20 @@ export const api = {
     request<WebSearchResponse>("/api/web-search", {
       method: "POST",
       body: JSON.stringify({ query, limit })
+    }),
+  listTools: () => request<{ tools: AgentTool[] }>("/api/tools"),
+  listTasks: (conversationId = "default", limit = 30) =>
+    request<{ tasks: AgentTask[] }>(`/api/tasks?conversationId=${encodeURIComponent(conversationId)}&limit=${limit}`),
+  getTask: (taskId: string) => request<AgentTask>(`/api/tasks/${taskId}`),
+  executeTool: (toolId: string, options: {
+    objective: string;
+    conversationId: string;
+    input: Record<string, unknown>;
+    approved?: boolean;
+  }) =>
+    request<AgentTask>(`/api/tools/${encodeURIComponent(toolId)}/execute`, {
+      method: "POST",
+      body: JSON.stringify(options)
     }),
   getMemory: () => request<MemoryState>("/api/memory"),
   commitMemory: (items: MemoryItem[]) =>

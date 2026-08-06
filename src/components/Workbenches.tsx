@@ -5,6 +5,8 @@ import { MemoryDetailPanel } from "./MemoryPanel";
 import { Search, Database, SlidersHorizontal, Users, X } from "lucide-react";
 import { getUiText } from "../i18n";
 import "../companion.css";
+import { useState } from "react";
+import { DesktopSidebar } from "./DesktopSidebar";
 
 const ACCENT_PRESETS = [
   "#6366f1", "#8b5cf6", "#d946ef", "#ec4899",
@@ -220,11 +222,14 @@ function DrawerSettingsPanel(props: WorkbenchProps) {
 }
 
 export function DesktopWorkbench(props: WorkbenchProps) {
-  const { agentConfig, renderedPanel, panelPhase, closePanel, openPanel } = props;
+  const { agentConfig, conversation, selectedProvider, renderedPanel, panelPhase, closePanel, openPanel } = props;
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const text = getUiText(agentConfig.language);
 
   return (
-    <main className="chat-only-layout" data-companion>
+    <main className={`desktop-workbench ${sidebarCollapsed ? "sidebar-collapsed" : ""}`} data-companion>
+      <DesktopSidebar {...props} collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} />
+      <section className="chat-only-layout">
       {/* 顶部人格栏 */}
       <header className="companion-header">
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -235,10 +240,10 @@ export function DesktopWorkbench(props: WorkbenchProps) {
             {agentConfig.avatar || "🤖"}
           </div>
           <div>
-            <div className="companion-name">{agentConfig.name}</div>
+            <div className="companion-name">{conversation.title}</div>
             <div className="companion-status">
               <span className="live-dot" />
-              在线
+              {agentConfig.name} · {selectedProvider.model}
             </div>
           </div>
         </div>
@@ -280,6 +285,8 @@ export function DesktopWorkbench(props: WorkbenchProps) {
 
       {/* 聊天区 */}
       <ChatPanel {...props} />
+
+      </section>
 
       {/* 设置抽屉（左侧滑出） */}
       {renderedPanel === "settings" && (
