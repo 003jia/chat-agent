@@ -1,0 +1,17 @@
+services:
+  memory-agent:
+    build: .
+    container_name: memory-agent
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8787
+      - MEMORY_AGENT_ADMIN_TOKEN=${MEMORY_AGENT_ADMIN_TOKEN:?请在 .env 中设置 MEMORY_AGENT_ADMIN_TOKEN}
+      - MEMORY_AGENT_API_KEY_OPENAI_COMPATIBLE=${MEMORY_AGENT_API_KEY_OPENAI_COMPATIBLE:-}
+      - MEMORY_AGENT_API_KEY_OPENAI=${MEMORY_AGENT_API_KEY_OPENAI:-}
+      - MEMORY_AGENT_API_KEY_DEEPSEEK=${MEMORY_AGENT_API_KEY_DEEPSEEK:-}
+      - MEMORY_AGENT_API_KEY_ANTHROPIC=${MEMORY_AGENT_API_KEY_ANTHROPIC:-}
+    volumes:
+      - ./data:/app/data

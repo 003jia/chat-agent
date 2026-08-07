@@ -7,6 +7,7 @@ import { getUiText, type UiLanguage } from "../i18n";
 import type { Conversation, MemoryItem } from "../types";
 import type { WorkbenchProps } from "../workbenchTypes";
 import { IconButton, Segmented } from "./ui";
+import { WelcomeScreen } from "./WelcomeScreen";
 
 export function ChatPanel({
   agentConfig,
@@ -100,13 +101,20 @@ export function ChatPanel({
 }
 
 export function MobileChat(props: WorkbenchProps) {
-  const { agentConfig, memoryState, conversation, pendingCandidates, activeMode, setMobileView, updateAgent, chooseMode, copyMessage, regenerateMessage, setDraft } = props;
+  const { agentConfig, memoryState, conversation, pendingCandidates, activeMode, hasStarted, setMobileView, updateAgent, chooseMode, copyMessage, regenerateMessage, setDraft } = props;
   const scrollRef = useAutoScroll(conversation);
   const text = getUiText(agentConfig.language);
   const memoryById = new Map(memoryState.items.map((item) => [item.id, item]));
+  if (!hasStarted) {
+    return (
+      <section className="phone-frame motion-page">
+        <div className="phone-status"><strong>9:41</strong><span>⌁ ◔ ▱</span></div>
+        <WelcomeScreen {...props} />
+      </section>
+    );
+  }
   return (
-    <section className="phone-frame motion-page">
-      <div className="phone-status"><strong>9:41</strong><span>⌁ ◔ ▱</span></div>
+    <section className="phone-frame motion-page chat-enter">
       <header className="mobile-header">
         <div>
           <h1>{agentConfig.name}</h1>

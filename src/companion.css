@@ -413,6 +413,85 @@
   box-shadow: var(--bubble-shadow);
 }
 
+/* ===== 初始欢迎界面 ===== */
+.welcome-screen {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: welcome-fade-in var(--motion-panel) var(--ease-standard) both;
+}
+
+.welcome-screen.exit {
+  animation: welcome-fade-out var(--motion-panel) var(--ease-standard) both;
+}
+
+.welcome-screen-inner {
+  display: flex;
+  width: 100%;
+  max-width: 640px;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.welcome-screen-inner h1 {
+  margin: 0;
+  color: var(--companion-text);
+  font-size: 28px;
+  font-weight: 650;
+  text-align: center;
+}
+
+.welcome-composer {
+  width: 100%;
+  max-width: 100%;
+}
+
+.welcome-quick-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.welcome-quick-prompts button {
+  padding: 8px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, white);
+  border-radius: 10px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, white);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.welcome-quick-prompts button:hover {
+  background: color-mix(in srgb, var(--accent) 14%, white);
+}
+
+@keyframes welcome-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes welcome-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.chat-enter {
+  display: contents;
+  animation: chat-fade-in var(--motion-panel) var(--ease-standard) both;
+}
+
+@keyframes chat-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+
 .composer-model-bar {
   display: flex;
   min-height: 34px;
@@ -1634,4 +1713,67 @@
 .new-conversation-button:hover:not(:disabled) {
   background: #3574c4;
   box-shadow: 0 10px 22px rgba(63, 127, 210, 0.34);
+}
+
+/* —— 三栏布局：右侧记忆面板常驻（2026-08-06，对应设计稿 19:1）—— */
+.desktop-workbench {
+  grid-template-columns: 288px minmax(0, 1fr) 320px;
+  gap: 16px;
+  padding: 16px;
+  background-image: linear-gradient(0deg, #fff1eb 0%, #ace0f9 100%);
+  background-size: cover;
+}
+
+.desktop-workbench.sidebar-collapsed {
+  grid-template-columns: 72px minmax(0, 1fr) 320px;
+}
+
+.desktop-workbench.memory-collapsed {
+  grid-template-columns: 288px minmax(0, 1fr);
+}
+
+.desktop-workbench.sidebar-collapsed.memory-collapsed {
+  grid-template-columns: 72px minmax(0, 1fr);
+}
+
+.desktop-conversation-sidebar,
+.chat-only-layout,
+.desktop-memory-column {
+  height: auto;
+  min-height: 0;
+}
+
+.desktop-conversation-sidebar {
+  border-radius: 24px;
+}
+
+.chat-only-layout {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(24px) saturate(1.25);
+  -webkit-backdrop-filter: blur(24px) saturate(1.25);
+}
+
+.desktop-memory-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(24px) saturate(1.25);
+  -webkit-backdrop-filter: blur(24px) saturate(1.25);
+  box-shadow: 0 12px 32px rgba(63, 127, 210, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.desktop-memory-column .drawer-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.desktop-memory-column.collapsed {
+  display: none;
 }

@@ -4,6 +4,7 @@ dist
 *.log
 .env
 .env.*
+!.env.example
 data/
 .workbuddy/
 qa-screenshots/

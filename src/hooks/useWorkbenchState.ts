@@ -36,6 +36,7 @@ export function useWorkbenchState() {
   const [statusKey, setStatusKey] = useState(0);
   const [memoryFeedbackKey, setMemoryFeedbackKey] = useState(0);
   const [memoryPanelCollapsed, setMemoryPanelCollapsed] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
   const panelCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const languageRef = useRef<AgentConfig["language"] | null>(null);
 
@@ -57,19 +58,8 @@ export function useWorkbenchState() {
         setRoleStore(roles);
         setTeamStore(teams);
         setModelConfig(model);
-        // Inject greeting for empty conversation on boot
-        if (!activeConversation.messages.length) {
-          const bootRole = roles.roles.find((role) => role.id === activeConversation.roleId) || roles.roles[0];
-          const greetingText = bootRole?.greeting || (bootRole?.language === "en" ? getUiText("en").companion.greeting.default : getUiText("zh").companion.greeting.default);
-          activeConversation.messages.push({
-            id: `local-greeting-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-            role: "assistant",
-            content: greetingText,
-            timestamp: new Date().toISOString(),
-            memoryRefs: [],
-            candidateMemoryIds: []
-          });
-        }
+        // Empty conversation stays on the welcome screen until the user sends the first message
+        setHasStarted(activeConversation.messages.length > 0);
         setConversation(activeConversation);
         setConversations(conversationList.conversations);
         setMemoryState(memory);
@@ -334,20 +324,8 @@ export function useWorkbenchState() {
     setBusyAction("conversation-switch");
     try {
       const created = await api.createConversation(options);
-      const activeRoleConfig = roleStore?.roles.find((role) => role.id === created.roleId) || agentConfig;
-      const greetingText = activeRoleConfig?.greeting || (activeRoleConfig?.language === "en" ? getUiText("en").companion.greeting.default : getUiText("zh").companion.greeting.default);
-      const hasMessages = created.messages && created.messages.length > 0;
-      if (!hasMessages && greetingText) {
-        created.messages.push({
-          id: `local-greeting-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-          role: "assistant",
-          content: greetingText,
-          timestamp: new Date().toISOString(),
-          memoryRefs: [],
-          candidateMemoryIds: []
-        });
-      }
       setConversation(created);
+      setHasStarted(Boolean(created.messages && created.messages.length > 0));
       setConversations(await refreshConversationList());
       setTasks([]);
       setPendingCandidates([]);
@@ -367,6 +345,7 @@ export function useWorkbenchState() {
     try {
       const next = await api.getConversation(conversationId);
       setConversation(next);
+      setHasStarted(next.messages.length > 0);
       setTasks((await api.listTasks(conversationId)).tasks);
       setPendingCandidates([]);
       showStatus(agentConfig?.language === "en" ? `Switched to conversation "${next.title}"` : `已切换到会话「${next.title}」`);
@@ -509,14 +488,17 @@ export function useWorkbenchState() {
     const content = draft.trim();
     if (!content || sending || !conversation) return;
     const activeConversation = conversation;
+    const isFirstMessage = !hasStarted && activeConversation.messages.length === 0;
     const localUserMessage = createLocalMessage("user", content);
     const localAssistantMessage = createLocalMessage("assistant", "");
+    const baseMessages = isFirstMessage ? [createGreetingMessage(agentConfig)] : activeConversation.messages;
     setDraft("");
     setSending(true);
     setError("");
+    if (isFirstMessage) setHasStarted(true);
     setConversation({
       ...activeConversation,
-      messages: [...activeConversation.messages, localUserMessage, localAssistantMessage],
+      messages: [...baseMessages, localUserMessage, localAssistantMessage],
       updatedAt: new Date().toISOString()
     });
     showStatus(text.status.streaming);
@@ -950,6 +932,7 @@ export function useWorkbenchState() {
     draft,
     saving,
     sending,
+    hasStarted,
     status,
     error,
     adminToken,
@@ -1019,6 +1002,18 @@ function createLocalMessage(role: "user" | "assistant", content: string): ChatMe
     id: `local-${role}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
     role,
     content,
+    timestamp: new Date().toISOString(),
+    memoryRefs: [],
+    candidateMemoryIds: []
+  };
+}
+
+function createGreetingMessage(role: AgentConfig | null): ChatMessage {
+  const greetingText = role?.greeting || (role?.language === "en" ? getUiText("en").companion.greeting.default : getUiText("zh").companion.greeting.default);
+  return {
+    id: `local-greeting-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    role: "assistant",
+    content: greetingText,
     timestamp: new Date().toISOString(),
     memoryRefs: [],
     candidateMemoryIds: []

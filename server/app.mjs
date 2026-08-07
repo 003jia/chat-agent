@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 import rateLimit from "express-rate-limit";
+import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1379,6 +1380,18 @@ export function createApp(options = {}) {
       next(error);
     }
   });
+
+  // 生产模式静态托管：dist/ 构建产物存在时，由同一端口提供前端页面。
+  // 前端所有 API 调用都是相对路径 /api/*，同源托管后无需额外配置 CORS。
+  const distDir = path.join(rootDir, "dist");
+  const indexHtmlPath = path.join(distDir, "index.html");
+  if (existsSync(indexHtmlPath)) {
+    app.use(express.static(distDir, { index: "index.html", maxAge: "1h" }));
+    app.get(/^(?!\/api).*/, (request, response, next) => {
+      if (request.method !== "GET" && request.method !== "HEAD") return next();
+      response.sendFile(indexHtmlPath);
+    });
+  }
 
   app.use((error, request, response, _next) => {
     const status = error.status || 500;

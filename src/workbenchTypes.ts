@@ -19,6 +19,7 @@ export interface WorkbenchProps {
   draft: string;
   saving: boolean;
   sending: boolean;
+  hasStarted: boolean;
   status: string;
   error: string;
   adminToken: string;

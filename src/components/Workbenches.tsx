@@ -1,6 +1,7 @@
 import type { WorkbenchProps } from "../workbenchTypes";
 import { AdminTokenPanel, BackgroundSettings, MobileSettings, ConversationSwitcher, RoleSwitcher } from "./SettingsPanels";
 import { ChatPanel, MobileChat } from "./ChatPanel";
+import { WelcomeScreen } from "./WelcomeScreen";
 import { MemoryDetailPanel } from "./MemoryPanel";
 import { Search, Database, SlidersHorizontal, Users, X } from "lucide-react";
 import { getUiText } from "../i18n";
@@ -222,71 +223,89 @@ function DrawerSettingsPanel(props: WorkbenchProps) {
 }
 
 export function DesktopWorkbench(props: WorkbenchProps) {
-  const { agentConfig, conversation, selectedProvider, renderedPanel, panelPhase, closePanel, openPanel } = props;
+  const { agentConfig, conversation, selectedProvider, renderedPanel, panelPhase, closePanel, openPanel, hasStarted } = props;
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [memoryCollapsed, setMemoryCollapsed] = useState(false);
   const text = getUiText(agentConfig.language);
 
   return (
-    <main className={`desktop-workbench ${sidebarCollapsed ? "sidebar-collapsed" : ""}`} data-companion>
+    <main className={`desktop-workbench ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${memoryCollapsed ? "memory-collapsed" : ""}`} data-companion>
       <DesktopSidebar {...props} collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} />
       <section className="chat-only-layout">
-      {/* 顶部人格栏 */}
-      <header className="companion-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div
-            className="companion-avatar"
-            style={{ background: agentConfig.accentColor || "#6366f1" }}
-          >
-            {agentConfig.avatar || "🤖"}
-          </div>
-          <div>
-            <div className="companion-name">{conversation.title}</div>
-            <div className="companion-status">
-              <span className="live-dot" />
-              {agentConfig.name} · {selectedProvider.model}
-            </div>
-          </div>
-        </div>
-        <div className="header-actions">
-          <button
-            className="icon-button"
-            type="button"
-            aria-label={text.chat.search}
-            onClick={() => openPanel("search")}
-          >
-            <Search size={20} />
-          </button>
-          <button
-            className="icon-button"
-            type="button"
-            aria-label={text.chat.settings}
-            onClick={() => openPanel("memory")}
-          >
-            <Database size={20} />
-          </button>
-          <button
-            className="icon-button"
-            type="button"
-            aria-label={text.mobileSettings.expertTeams}
-            onClick={() => openPanel("team")}
-          >
-            <Users size={20} />
-          </button>
-          <button
-            className="icon-button"
-            type="button"
-            aria-label={text.chat.settings}
-            onClick={() => openPanel("settings")}
-          >
-            <SlidersHorizontal size={20} />
-          </button>
-        </div>
-      </header>
+        {!hasStarted ? (
+          <WelcomeScreen {...props} />
+        ) : (
+          <div className="chat-enter">
+            {/* 顶部人格栏 */}
+            <header className="companion-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  className="companion-avatar"
+                  style={{ background: agentConfig.accentColor || "#6366f1" }}
+                >
+                  {agentConfig.avatar || "🤖"}
+                </div>
+                <div>
+                  <div className="companion-name">{conversation.title}</div>
+                  <div className="companion-status">
+                    <span className="live-dot" />
+                    {agentConfig.name} · {selectedProvider.model}
+                  </div>
+                </div>
+              </div>
+              <div className="header-actions">
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label={text.chat.search}
+                  onClick={() => openPanel("search")}
+                >
+                  <Search size={20} />
+                </button>
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label={text.panels.memory}
+                  onClick={() => setMemoryCollapsed((v) => !v)}
+                >
+                  <Database size={20} />
+                </button>
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label={text.mobileSettings.expertTeams}
+                  onClick={() => openPanel("team")}
+                >
+                  <Users size={20} />
+                </button>
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label={text.chat.settings}
+                  onClick={() => openPanel("settings")}
+                >
+                  <SlidersHorizontal size={20} />
+                </button>
+              </div>
+            </header>
 
-      {/* 聊天区 */}
-      <ChatPanel {...props} />
-
+            {/* 聊天区 */}
+            <ChatPanel {...props} />
+          </div>
+        )}
       </section>
+
+      {/* 右侧常驻记忆面板（设计稿 19:1 第三栏：候选审核 + 已加载记忆 + 当前记忆） */}
+      <aside className={`desktop-memory-column ${memoryCollapsed ? "collapsed" : ""}`}>
+        {hasStarted ? (
+          <MemoryDetailPanel {...props} />
+        ) : (
+          <div className="drawer-body">
+            <p className="empty-copy">{text.panels.memory}</p>
+          </div>
+        )}
+      </aside>
+
 
       {/* 设置抽屉（左侧滑出） */}
       {renderedPanel === "settings" && (
