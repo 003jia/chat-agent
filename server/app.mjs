@@ -6,7 +6,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { cleanupAtomicFsTemps, writeJsonAtomic, writeTextAtomic } from "./atomic-fs.mjs";
-import { requireAdminToken } from "./auth.mjs";
+import { createAuditWriter } from "./audit.mjs";
+import { requireAdminToken, verifyAdminCredentials } from "./auth.mjs";
 import {
   CHAT_RATE_LIMIT_MAX,
   CHAT_RATE_LIMIT_WINDOW_MS,
@@ -24,7 +25,7 @@ import {
   WRITE_RATE_LIMIT_MAX,
   WRITE_RATE_LIMIT_WINDOW_MS
 } from "./constants.mjs";
-import { defaultAgentConfig, defaultModelConfig, defaultRoleStore, hasProviderEnvApiKey, maskModelConfig, normalizeModelConfig, normalizeRoleStore, providerFromConfig, stripRuntimeModelConfig } from "./config.mjs";
+import { defaultAgentConfig, defaultModelConfig, defaultRoleStore, hasProviderEnvApiKey, maskModelConfig, normalizeModelConfig, normalizeRoleStore, providerFromConfig, stripRuntimeModelConfig, validateProviderBaseURL } from "./config.mjs";
 import { createSeedConversation, normalizeConversation, renderConversationExport, searchConversationMessages, seedConversation, summarizeConversation } from "./conversations.mjs";
 import { apiError } from "./errors.mjs";
 import { createId } from "./ids.mjs";
@@ -56,9 +57,19 @@ import { buildSystemPrompt, formatUserMessageForModel } from "./prompt.mjs";
 import { withRetry } from "./retry.mjs";
 import { createSummaryHandler } from "./summary.mjs";
 import { performWebSearch, WEB_SEARCH_RESULT_LIMIT } from "./search.mjs";
-import { completeToolTask, createToolTask, failToolTask, normalizeTask, summarizeTask } from "./tasks.mjs";
+import { runAgentTask } from "./runtimes.mjs";
+import { approveToolTask, cancelToolTask, completeToolTask, createToolTask, failToolTask, normalizeTask, summarizeTask } from "./tasks.mjs";
 import { emptyTeamStore, normalizeTeamStore } from "./teams.mjs";
 import { createToolRegistry, executeRegisteredTool, getRegisteredTool, listRegisteredTools, validateToolInput } from "./tools.mjs";
+import { buildDocx, buildMarkdownDocument, normalizeDocumentInput } from "./office.mjs";
+import {
+  grepWorkspace,
+  listWorkspace,
+  patchWorkspaceFile,
+  readWorkspaceFile,
+  resolveWorkspaceRoot,
+  writeWorkspaceFile
+} from "./workspace.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultRootDir = path.resolve(__dirname, "..");
@@ -94,16 +105,42 @@ export function createApp(options = {}) {
   const rawMemoryDir = path.join(memoryDir, "raw");
   const memoryEmbeddingsPath = path.join(memoryDir, "embeddings.json");
   const backgroundsDir = path.join(dataDir, "backgrounds");
+  const auditDir = path.join(dataDir, "audit");
   const memoryWriteLock = createMutex();
   const taskWriteLock = createMutex();
   const conversationWriteLock = createMutex();
   const backgroundTasks = new Set();
   const pendingMemoryAccess = new Map();
   let memoryAccessTimer = null;
+  const writeAudit = createAuditWriter(auditDir);
   const toolRegistry = createToolRegistry({
     performWebSearch,
     getMemoryIndex,
-    selectRelevantMemories
+    selectRelevantMemories,
+    workspaceRoot: resolveWorkspaceRoot(rootDir, env),
+    workspace: {
+      listWorkspace,
+      readWorkspaceFile,
+      grepWorkspace,
+      writeWorkspaceFile,
+      patchWorkspaceFile
+    },
+    office: {
+      normalizeDocumentInput,
+      buildMarkdownDocument,
+      buildDocx
+    },
+    agentRuntime: {
+      run: (input) => runAgentTask({
+        backend: input.backend,
+        task: input.task,
+        sandbox: input.sandbox || "read-only",
+        workdir: resolveWorkspaceRoot(rootDir, env),
+        timeoutMs: Number(env.AGENT_TIMEOUT_MS) || undefined,
+        env,
+        logger
+      })
+    }
   });
 
   const app = express();
@@ -149,8 +186,10 @@ export function createApp(options = {}) {
     await fs.mkdir(tasksDir, { recursive: true });
     await fs.mkdir(rawMemoryDir, { recursive: true });
     await fs.mkdir(backgroundsDir, { recursive: true });
+    await fs.mkdir(auditDir, { recursive: true });
+    await fs.mkdir(resolveWorkspaceRoot(rootDir, env), { recursive: true });
     await cleanupAtomicFsTemps(dataDir);
-    for (const dir of [dataDir, configDir, conversationsDir, tasksDir, memoryDir, rawMemoryDir, backgroundsDir]) {
+    for (const dir of [dataDir, configDir, conversationsDir, tasksDir, memoryDir, rawMemoryDir, backgroundsDir, auditDir]) {
       await fs.chmod(dir, 0o700).catch(() => {});
     }
     await ensureRoleStore();
@@ -160,6 +199,26 @@ export function createApp(options = {}) {
     await ensureJson(path.join(memoryDir, "index.json"), normalizeMemoryItems(seedMemoryIndex));
     await ensureJson(memoryEmbeddingsPath, {});
     await ensureText(path.join(memoryDir, "memory.md"), renderMemoryMarkdown(seedMemoryIndex));
+    await recoverInterruptedTasks();
+  }
+
+  async function recoverInterruptedTasks() {
+    const files = await fs.readdir(tasksDir).catch(() => []);
+    const now = new Date().toISOString();
+    await taskWriteLock(async () => {
+      for (const file of files.filter((name) => name.endsWith(".json"))) {
+        const filePath = path.join(tasksDir, file);
+        const stored = await readJson(filePath, null);
+        if (!stored) continue;
+        const task = normalizeTask(stored);
+        if (task.status !== "running") continue;
+        const recovered = failToolTask(task, {
+          code: "TASK_INTERRUPTED",
+          message: "服务在任务执行期间停止，任务已标记为失败，请重新执行。"
+        }, now);
+        await writeJson(filePath, recovered);
+      }
+    });
   }
 
   async function ensureRoleStore() {
@@ -459,6 +518,30 @@ export function createApp(options = {}) {
     return normalized;
   }
 
+  async function transitionWaitingTask(taskId, transition, message) {
+    validateResourceId(taskId, "任务");
+    return await taskWriteLock(async () => {
+      const filePath = path.join(tasksDir, `${taskId}.json`);
+      const stored = await readJson(filePath, null);
+      if (!stored) throw apiError(404, "TASK_NOT_FOUND", "任务不存在。");
+      const nextTask = transition(normalizeTask(stored));
+      if (!nextTask) {
+        throw apiError(409, "TASK_NOT_WAITING_APPROVAL", message);
+      }
+      await writeJson(filePath, nextTask);
+      return nextTask;
+    });
+  }
+
+  async function recordAudit(event) {
+    try {
+      return await writeAudit(event);
+    } catch (error) {
+      logError(logger, error, { operation: "audit-write", action: event?.action });
+      return null;
+    }
+  }
+
   async function listTasks(conversationId, limit = 30) {
     let files = [];
     try {
@@ -672,6 +755,32 @@ export function createApp(options = {}) {
       });
     backgroundTasks.add(task);
   }
+
+  // 账号密码登录：校验通过后返回当前管理员令牌，前端将其作为 X-Admin-Token 使用
+  app.post("/api/auth/login", writeLimiter, async (request, response, next) => {
+    const expectedToken = String(env.MEMORY_AGENT_ADMIN_TOKEN || "");
+    if (!expectedToken) {
+      next(apiError(503, "AUTH_NOT_CONFIGURED", "服务端未配置管理员令牌，无法登录。"));
+      return;
+    }
+    if (verifyAdminCredentials(request.body || {}, env)) {
+      await recordAudit({
+        action: "auth.login",
+        outcome: "success",
+        resourceType: "session",
+        metadata: { username: String(request.body?.username || ""), ip: request.ip }
+      });
+      response.json({ ok: true, token: expectedToken });
+      return;
+    }
+    await recordAudit({
+      action: "auth.login",
+      outcome: "failure",
+      resourceType: "session",
+      metadata: { username: String(request.body?.username || ""), ip: request.ip }
+    });
+    next(apiError(401, "AUTH_FAILED", "账号或密码不正确。"));
+  });
 
   app.get("/api/health", async (_request, response, next) => {
     try {
@@ -950,6 +1059,7 @@ export function createApp(options = {}) {
       for (const [id, provider] of Object.entries(incoming.providers || {})) {
         const nextProvider = { ...providers[id], ...provider };
         nextProvider.apiKey = hasProviderEnvApiKey(id, env) ? "" : provider.apiKey ? provider.apiKey : providers[id]?.apiKey || "";
+        nextProvider.baseURL = validateProviderBaseURL(nextProvider.baseURL);
         providers[id] = nextProvider;
       }
       const nextConfig = normalizeModelConfig({
@@ -1110,7 +1220,10 @@ export function createApp(options = {}) {
   app.post("/api/web-search", chatLimiter, adminAuth, handleWebSearchRequest);
 
   app.get("/api/tools", adminAuth, (_request, response) => {
-    response.json({ tools: listRegisteredTools(toolRegistry) });
+    response.json({
+      tools: listRegisteredTools(toolRegistry),
+      workspaceRoot: resolveWorkspaceRoot(rootDir, env)
+    });
   });
 
   app.get("/api/tasks", adminAuth, async (request, response, next) => {
@@ -1141,26 +1254,113 @@ export function createApp(options = {}) {
         objective: request.body?.objective || tool.description,
         conversationId,
         roleId: conversation.roleId,
-        toolInput,
-        approved: Boolean(request.body?.approved)
+        toolInput
       }, tool);
       task = await saveTask(task);
+      await recordAudit({
+        action: "task.created",
+        outcome: task.status === "waiting_approval" ? "pending" : "success",
+        resourceType: "task",
+        resourceId: task.id,
+        metadata: { toolId: tool.id, permission: tool.permission, conversationId }
+      });
       if (task.status === "waiting_approval") {
         response.status(202).json(task);
         return;
       }
       try {
         const result = await executeRegisteredTool(toolRegistry, tool.id, toolInput, {
-          approved: Boolean(request.body?.approved),
+          approved: tool.permission === "read",
           conversationId,
           roleId: conversation.roleId
         });
         task = await saveTask(completeToolTask(task, result));
+        await recordAudit({
+          action: "tool.executed",
+          outcome: "success",
+          resourceType: "task",
+          resourceId: task.id,
+          metadata: { toolId: tool.id }
+        });
       } catch (error) {
         logError(logger, error, { operation: "tool-execution", toolId: tool.id, taskId: task.id });
         task = await saveTask(failToolTask(task, error));
+        await recordAudit({
+          action: "tool.executed",
+          outcome: "failure",
+          resourceType: "task",
+          resourceId: task.id,
+          metadata: { toolId: tool.id, errorCode: error.code || "TOOL_EXECUTION_ERROR" }
+        });
       }
       response.status(201).json(task);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/tasks/:taskId/approve", writeLimiter, adminAuth, async (request, response, next) => {
+    try {
+      let task = await transitionWaitingTask(
+        request.params.taskId,
+        approveToolTask,
+        "只有待确认任务可以批准执行。"
+      );
+      await recordAudit({
+        action: "task.approved",
+        outcome: "success",
+        resourceType: "task",
+        resourceId: task.id,
+        metadata: { toolId: task.steps.at(-1)?.toolId }
+      });
+      const step = task.steps[task.steps.length - 1];
+      const tool = getRegisteredTool(toolRegistry, step.toolId);
+      try {
+        const result = await executeRegisteredTool(toolRegistry, tool.id, step.input, {
+          approved: true,
+          conversationId: task.conversationId,
+          roleId: task.roleId
+        });
+        task = await saveTask(completeToolTask(task, result));
+        await recordAudit({
+          action: "tool.executed",
+          outcome: "success",
+          resourceType: "task",
+          resourceId: task.id,
+          metadata: { toolId: tool.id }
+        });
+      } catch (error) {
+        logError(logger, error, { operation: "tool-approval-execution", toolId: tool.id, taskId: task.id });
+        task = await saveTask(failToolTask(task, error));
+        await recordAudit({
+          action: "tool.executed",
+          outcome: "failure",
+          resourceType: "task",
+          resourceId: task.id,
+          metadata: { toolId: tool.id, errorCode: error.code || "TOOL_EXECUTION_ERROR" }
+        });
+      }
+      response.json(task);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/tasks/:taskId/cancel", writeLimiter, adminAuth, async (request, response, next) => {
+    try {
+      const task = await transitionWaitingTask(
+        request.params.taskId,
+        cancelToolTask,
+        "只有待确认任务可以取消。"
+      );
+      await recordAudit({
+        action: "task.cancelled",
+        outcome: "cancelled",
+        resourceType: "task",
+        resourceId: task.id,
+        metadata: { toolId: task.steps.at(-1)?.toolId }
+      });
+      response.json(task);
     } catch (error) {
       next(error);
     }
@@ -1416,7 +1616,7 @@ export function createApp(options = {}) {
     waitForBackgroundTasks,
     recordMemoryAccess,
     flushMemoryAccess,
-    paths: { rootDir, dataDir, configDir, conversationsDir, tasksDir, memoryDir, rawMemoryDir, backgroundsDir }
+    paths: { rootDir, dataDir, configDir, conversationsDir, tasksDir, memoryDir, rawMemoryDir, backgroundsDir, auditDir, workspaceRoot: resolveWorkspaceRoot(rootDir, env) }
   };
 }
 

@@ -1,7 +1,7 @@
-import { AlertCircle, CheckCircle2, ClipboardList, Clock3, Database, FileText, Globe2, Loader2, Mic, Paperclip, Play, Search, Send, ShieldCheck, X } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { AlertCircle, Briefcase, CheckCircle2, ClipboardList, Clock3, Code2, Cpu, Database, FileCode2, FileText, FolderOpen, Globe2, Loader2, Mic, Paperclip, Play, Search, Send, ShieldCheck, Wand2, X } from "lucide-react";
+import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { getUiText } from "../i18n";
-import type { ConversationSearchResult } from "../types";
+import type { AgentTool, ConversationSearchResult, ToolCategory } from "../types";
 import type { WorkbenchProps, ActivePanel } from "../workbenchTypes";
 import { AgentEditorPanel, SettingsPanel } from "./SettingsPanels";
 import { MemoryDetailPanel } from "./MemoryPanel";
@@ -171,8 +171,11 @@ function WebSearchPanel({ agentConfig, draft, webSearchState, busyAction, active
   );
 }
 
-function ToolsPanel({ agentConfig, draft, tools, tasks, runTool, testModel, organizeMemory, generateSummary, commitCandidates, pendingCandidates, saving, busyAction, chooseMode, notify }: WorkbenchProps) {
+function ToolsPanel({ agentConfig, draft, tools, tasks, runTool, approveTask, cancelTask, testModel, organizeMemory, generateSummary, commitCandidates, pendingCandidates, saving, busyAction, chooseMode, notify, workspaceRoot }: WorkbenchProps) {
   const [objective, setObjective] = useState(draft);
+  const [selectedTool, setSelectedTool] = useState<AgentTool | null>(null);
+  const [inputs, setInputs] = useState<Record<string, string>>({});
+  const [activeToolCategory, setActiveToolCategory] = useState<ToolCategory>("work");
   const testing = busyAction === "model-test";
   const organizing = busyAction === "memory-organize";
   const committing = busyAction === "memory-commit";
@@ -180,14 +183,33 @@ function ToolsPanel({ agentConfig, draft, tools, tasks, runTool, testModel, orga
   const text = getUiText(agentConfig.language);
   const isEnglish = agentConfig.language === "en";
 
-  async function executeTool(toolId: string) {
-    const query = objective.trim();
-    if (!query) {
+  function selectTool(tool: AgentTool) {
+    setSelectedTool(tool);
+    setInputs(defaultInputs(tool));
+  }
+
+  function selectToolCategory(category: ToolCategory) {
+    setActiveToolCategory(category);
+    setSelectedTool(null);
+    setInputs({});
+  }
+
+  async function executeTool() {
+    if (!selectedTool) return;
+    if (!objective.trim()) {
       notify(isEnglish ? "Enter a task objective first." : "请先输入任务目标。");
       return;
     }
-    await runTool(toolId, query, { query, limit: 5 });
+    const missing = (selectedTool.inputSchema.required || []).find((field) => !inputs[field]?.trim());
+    if (missing) {
+      notify(isEnglish ? `Missing required field: ${missing}` : `缺少必填参数：${missing}`);
+      return;
+    }
+    await runTool(selectedTool.id, objective, normalizedInputs(selectedTool, inputs));
   }
+
+  const visibleTools = tools.filter((tool) => tool.category === activeToolCategory);
+  const fields = selectedTool ? Object.keys(selectedTool.inputSchema.properties) : [];
 
   return (
     <div className="drawer-body">
@@ -195,7 +217,7 @@ function ToolsPanel({ agentConfig, draft, tools, tasks, runTool, testModel, orga
         <div className="section-head">
           <div>
             <h3>{isEnglish ? "Agent Tool Runtime" : "智能体工具运行台"}</h3>
-            <p>{isEnglish ? "Read tools run automatically. Every execution is recorded as a task." : "只读工具可自动执行，每次调用都会形成可审计任务记录。"}</p>
+            <p>{isEnglish ? "Read tools run automatically; write and office tools need approval." : "只读工具自动执行；写入与办公工具需人工确认后执行。"}</p>
           </div>
           <span className="runtime-badge"><ShieldCheck size={14} />{isEnglish ? "Controlled" : "受控执行"}</span>
         </div>
@@ -204,21 +226,83 @@ function ToolsPanel({ agentConfig, draft, tools, tasks, runTool, testModel, orga
           <textarea
             value={objective}
             onChange={(event) => setObjective(event.target.value)}
-            placeholder={isEnglish ? "Describe what the tool should find or verify..." : "描述需要工具查找或验证的内容..."}
+            placeholder={isEnglish ? "Describe what the tool should create, find or verify..." : "描述需要工具创建、查找或验证的内容..."}
             maxLength={500}
           />
         </label>
-        <div className="tool-grid registered-tools">
-          {tools.map((tool) => (
-            <button type="button" key={tool.id} onClick={() => executeTool(tool.id)} disabled={runningTool || !objective.trim()}>
-              {runningTool ? <Loader2 className="spin" size={18} /> : tool.id === "web.search" ? <Globe2 size={18} /> : <Database size={18} />}
-              <strong>{tool.name}</strong>
-              <span>{tool.description}</span>
-              <small><ShieldCheck size={12} />{tool.permission === "read" ? (isEnglish ? "Read-only · auto" : "只读 · 自动执行") : (isEnglish ? "Approval required" : "需要人工确认")}</small>
-              <Play className="tool-play" size={15} />
-            </button>
-          ))}
+
+        <div className="tool-category-tabs" role="tablist" aria-label={isEnglish ? "Tool category" : "工具分类"}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeToolCategory === "work"}
+            className={activeToolCategory === "work" ? "active" : ""}
+            onClick={() => selectToolCategory("work")}
+          >
+            <Briefcase size={16} />
+            <span><strong>Work</strong><small>{isEnglish ? "Search & office" : "检索与办公"}</small></span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeToolCategory === "coding"}
+            className={activeToolCategory === "coding" ? "active" : ""}
+            onClick={() => selectToolCategory("coding")}
+          >
+            <Code2 size={16} />
+            <span><strong>{isEnglish ? "Coding" : "编程"}</strong><small>{isEnglish ? "Local code & files" : "本地代码与文件"}</small></span>
+          </button>
         </div>
+
+        <div className="tool-group">
+          <div className="tool-category-head">
+            <div>
+              <h4>{activeToolCategory === "work" ? "Work" : (isEnglish ? "Coding" : "编程")}</h4>
+              <p>{activeToolCategory === "work"
+                ? (isEnglish ? "Search information and create office documents." : "检索信息、调用记忆并生成办公文档。")
+                : (isEnglish ? "Read, search, create and patch local code." : "读取、检索、创建和修改本地代码。")}</p>
+            </div>
+            <span>{visibleTools.length}</span>
+          </div>
+          <div className="tool-grid registered-tools">
+            {visibleTools.map((tool) => (
+              <button type="button" key={tool.id} onClick={() => selectTool(tool)} className={selectedTool?.id === tool.id ? "selected" : ""}>
+                {toolIcon(tool.id, activeToolCategory === "work" ? <Briefcase size={18} /> : <FileCode2 size={18} />)}
+                <strong>{tool.name}</strong><span>{tool.description}</span>
+                <small><ShieldCheck size={12} />{tool.permission === "read" ? (isEnglish ? "Read-only · auto" : "只读 · 自动执行") : (isEnglish ? "Approval required" : "需要人工确认")}</small>
+                <Play className="tool-play" size={15} />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {selectedTool && (
+          <div className="tool-form">
+            <div className="tool-form-head">
+              <h4>{selectedTool.name}</h4>
+              <button type="button" className="tool-form-cancel" onClick={() => setSelectedTool(null)}>{isEnglish ? "Cancel" : "取消"}</button>
+            </div>
+            {fields.map((field) => (
+              <ToolFormField
+                key={field}
+                tool={selectedTool}
+                field={field}
+                required={(selectedTool.inputSchema.required || []).includes(field)}
+                value={inputs[field] || ""}
+                onChange={(value) => setInputs((current) => ({ ...current, [field]: value }))}
+              />
+            ))}
+            {fields.length === 0 && (
+              <p className="empty-copy">{isEnglish ? "No parameters needed; click run." : "无需参数，点击执行即可。"}</p>
+            )}
+            <div className="drawer-actions">
+              <button type="button" onClick={executeTool} disabled={runningTool || saving}>
+                {runningTool ? <Loader2 className="spin" size={16} /> : <Play size={16} />}
+                {isEnglish ? "Run tool" : "执行工具"}
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="drawer-section task-timeline">
@@ -241,11 +325,27 @@ function ToolsPanel({ agentConfig, draft, tools, tasks, runTool, testModel, orga
                   <small>{step?.title || step?.toolId} · {formatTaskTime(task.updatedAt, agentConfig.language)}</small>
                 </div>
                 <span className="task-status-label">{taskStatusLabel(task.status, agentConfig.language)}</span>
+                {task.status === "waiting_approval" && step && (
+                  <div className="task-approval-actions">
+                    <button type="button" className="approve-button" onClick={() => approveTask(task.id)} disabled={runningTool || saving}>
+                      <ShieldCheck size={13} />{isEnglish ? "Approve" : "确认执行"}
+                    </button>
+                    <button type="button" className="cancel-task-button" onClick={() => cancelTask(task.id)} disabled={runningTool || saving}>
+                      <X size={13} />{isEnglish ? "Cancel" : "取消任务"}
+                    </button>
+                  </div>
+                )}
               </article>
             );
           })}
           {!tasks.length && <p className="empty-copy">{isEnglish ? "No tool executions yet." : "暂无工具执行记录。"}</p>}
         </div>
+      </section>
+
+      <section className="drawer-section workspace-path">
+        <h3>{isEnglish ? "Local workspace" : "本地工作区"}</h3>
+        <p className="workspace-path-value"><FolderOpen size={14} />{workspaceRoot || (isEnglish ? "loading..." : "加载中...")}</p>
+        <small>{isEnglish ? "All file and office tools are confined to this directory." : "所有文件与办公工具都被限制在该目录内。"}</small>
       </section>
 
       <section className="drawer-section">
@@ -262,6 +362,74 @@ function ToolsPanel({ agentConfig, draft, tools, tasks, runTool, testModel, orga
       </section>
     </div>
   );
+}
+
+function ToolFormField({ tool, field, required, value, onChange }: { tool: AgentTool; field: string; required: boolean; value: string; onChange: (value: string) => void }) {
+  const definition = tool.inputSchema.properties[field];
+  const multiline = isMultilineField(field);
+  const placeholder = field === "sections" || field === "blocks"
+    ? '[{"heading": "进展", "paragraphs": ["..."], "bullets": ["..."]}]'
+    : field === "path"
+      ? "docs/report.md"
+      : field === "task"
+        ? "把整个任务交给 DeepSeek Harness 自主执行，例如：把 src/utils.ts 里缺失的 debounce 补上并加测试。"
+        : field === "sandbox"
+          ? "read-only 或 workspace-write"
+          : field;
+  const label = field === "sections" ? "sections (JSON)"
+    : field === "blocks" ? "blocks (JSON)"
+      : field === "task" ? "task (交给 DSH 的任务)"
+        : field === "sandbox" ? "sandbox (沙箱级别)"
+          : field;
+  return (
+    <label className={`tool-form-field ${multiline ? "multiline" : ""}`}>
+      <span>{label}{required ? " *" : ""}{definition?.maxLength ? ` (max ${definition.maxLength})` : ""}</span>
+      {multiline
+        ? <textarea value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+        : <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />}
+    </label>
+  );
+}
+
+function defaultInputs(tool: AgentTool): Record<string, string> {
+  const defaults: Record<string, Record<string, string>> = {
+    "web.search": { query: "", limit: "5" },
+    "memory.search": { query: "", limit: "5" },
+    "workspace.list": { path: ".", depth: "2" },
+    "workspace.read": { path: "", maxChars: "50000" },
+    "workspace.grep": { pattern: "", path: ".", maxMatches: "50" },
+    "workspace.write": { path: "", content: "" },
+    "workspace.patch": { path: "", oldString: "", newString: "" },
+    "agent.task": { task: "", backend: "dsh", sandbox: "read-only" },
+    "office.document": { title: "", summary: "", path: "", sections: "" },
+    "office.docx": { title: "", path: "", blocks: "" }
+  };
+  return defaults[tool.id] || {};
+}
+
+function normalizedInputs(tool: AgentTool, inputs: Record<string, string>): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
+  const required = new Set(tool.inputSchema.required || []);
+  for (const [field, value] of Object.entries(inputs)) {
+    const definition = tool.inputSchema.properties[field];
+    if (!required.has(field) && !value.trim()) continue;
+    normalized[field] = definition?.type === "integer" ? Number(value) : value;
+  }
+  return normalized;
+}
+
+function isMultilineField(field: string) {
+  return ["content", "oldString", "newString", "sections", "blocks", "summary", "task"].includes(field);
+}
+
+function toolIcon(toolId: string, fallback: ReactNode) {
+  if (toolId === "workspace.list") return <FolderOpen size={18} />;
+  if (toolId === "workspace.read") return <FileText size={18} />;
+  if (toolId === "workspace.grep") return <Search size={18} />;
+  if (toolId === "workspace.patch") return <Wand2 size={18} />;
+  if (toolId === "agent.task") return <Cpu size={18} />;
+  if (toolId === "office.document" || toolId === "office.docx") return <Briefcase size={18} />;
+  return fallback;
 }
 
 function SummaryPanel({ agentConfig, generatedSummary, generateSummary, saveSummaryCandidate }: WorkbenchProps) {

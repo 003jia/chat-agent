@@ -764,8 +764,21 @@ describe("createApp API smoke", () => {
     });
 
     expect(tools.status).toBe(200);
-    expect(tools.json.tools.map((tool) => tool.id)).toEqual(["web.search", "memory.search"]);
+    expect(tools.json.tools.map((tool) => tool.id)).toEqual([
+      "web.search",
+      "memory.search",
+      "workspace.list",
+      "workspace.read",
+      "workspace.grep",
+      "workspace.write",
+      "workspace.patch",
+      "agent.task",
+      "office.document",
+      "office.docx"
+    ]);
     expect(tools.json.tools.every((tool) => tool.execute === undefined)).toBe(true);
+    expect(tools.json.tools.every((tool) => ["work", "coding"].includes(tool.category))).toBe(true);
+    expect(tools.json.workspaceRoot).toContain("workspace");
 
     const execution = await invokeApp(server.app, {
       method: "POST",
@@ -807,6 +820,138 @@ describe("createApp API smoke", () => {
     expect(response.status).toBe(400);
     expect(response.json.code).toBe("TOOL_INPUT_INVALID");
     expect(await readdir(server.paths.tasksDir)).toHaveLength(0);
+  });
+
+  it("queues workspace writes for approval and executes them once approved", async () => {
+    const server = await createTestApp();
+    const headers = { "X-Admin-Token": "secret" };
+    const pending = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/tools/workspace.write/execute",
+      headers,
+      body: {
+        objective: "写一个示例脚本",
+        conversationId: "default",
+        input: { path: "scripts/demo.ts", content: "export const demo = true;\n" }
+      }
+    });
+
+    expect(pending.status).toBe(202);
+    expect(pending.json.status).toBe("waiting_approval");
+    expect(await readdir(server.paths.tasksDir)).toHaveLength(1);
+
+    const approved = await invokeApp(server.app, {
+      method: "POST",
+      url: `/api/tasks/${pending.json.id}/approve`,
+      headers,
+      body: {}
+    });
+
+    expect(approved.status).toBe(200);
+    expect(approved.json.id).toBe(pending.json.id);
+    expect(approved.json.status).toBe("completed");
+    expect(await readdir(server.paths.tasksDir)).toHaveLength(1);
+    expect(await readFile(path.join(server.paths.workspaceRoot, "scripts", "demo.ts"), "utf8"))
+      .toBe("export const demo = true;\n");
+    const auditFiles = await readdir(server.paths.auditDir);
+    const auditLog = await readFile(path.join(server.paths.auditDir, auditFiles[0]), "utf8");
+    expect(auditLog).toContain('"action":"task.created"');
+    expect(auditLog).toContain('"action":"task.approved"');
+    expect(auditLog).toContain('"action":"tool.executed"');
+    expect(auditLog).not.toContain("export const demo");
+
+    const duplicateApproval = await invokeApp(server.app, {
+      method: "POST",
+      url: `/api/tasks/${pending.json.id}/approve`,
+      headers,
+      body: {}
+    });
+    expect(duplicateApproval.status).toBe(409);
+    expect(duplicateApproval.json.code).toBe("TASK_NOT_WAITING_APPROVAL");
+  });
+
+  it("creates an office document task with approval", async () => {
+    const server = await createTestApp();
+    const pending = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/tools/office.document/execute",
+      headers: { "X-Admin-Token": "secret" },
+      body: {
+        objective: "生成项目周报",
+        conversationId: "default",
+        input: {
+          title: "项目周报",
+          path: "reports/weekly.md",
+          sections: JSON.stringify([{ heading: "进展", paragraphs: ["完成办公与代码工具"] }])
+        }
+      }
+    });
+    const response = await invokeApp(server.app, {
+      method: "POST",
+      url: `/api/tasks/${pending.json.id}/approve`,
+      headers: { "X-Admin-Token": "secret" },
+      body: {}
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.json.status).toBe("completed");
+    const content = await readFile(path.join(server.paths.workspaceRoot, "reports", "weekly.md"), "utf8");
+    expect(content).toContain("# 项目周报");
+    expect(content).toContain("完成办公与代码工具");
+  });
+
+  it("cancels a waiting task without executing it", async () => {
+    const server = await createTestApp();
+    const headers = { "X-Admin-Token": "secret" };
+    const pending = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/tools/workspace.write/execute",
+      headers,
+      body: {
+        objective: "取消写入",
+        input: { path: "cancelled.txt", content: "must not exist" }
+      }
+    });
+    const cancelled = await invokeApp(server.app, {
+      method: "POST",
+      url: `/api/tasks/${pending.json.id}/cancel`,
+      headers,
+      body: {}
+    });
+
+    expect(cancelled.status).toBe(200);
+    expect(cancelled.json.id).toBe(pending.json.id);
+    expect(cancelled.json.status).toBe("cancelled");
+    await expect(readFile(path.join(server.paths.workspaceRoot, "cancelled.txt"), "utf8"))
+      .rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("marks interrupted running tasks as failed during startup recovery", async () => {
+    const server = await createTestApp();
+    const taskId = "task-interrupted-test";
+    await writeFile(path.join(server.paths.tasksDir, `${taskId}.json`), JSON.stringify({
+      id: taskId,
+      title: "Interrupted",
+      objective: "recover",
+      conversationId: "default",
+      status: "running",
+      createdAt: "2026-08-13T00:00:00.000Z",
+      updatedAt: "2026-08-13T00:00:00.000Z",
+      steps: [{
+        id: "step-interrupted-test",
+        toolId: "workspace.write",
+        title: "write",
+        permission: "write",
+        status: "running",
+        input: { path: "x.txt", content: "x" },
+        startedAt: "2026-08-13T00:00:00.000Z"
+      }]
+    }), "utf8");
+
+    await server.ensureDataStore();
+    const recovered = JSON.parse(await readFile(path.join(server.paths.tasksDir, `${taskId}.json`), "utf8"));
+    expect(recovered.status).toBe("failed");
+    expect(recovered.steps[0].error.code).toBe("TASK_INTERRUPTED");
   });
 });
 
