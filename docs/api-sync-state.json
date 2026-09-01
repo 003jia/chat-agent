@@ -1,0 +1,11 @@
+{
+  "repo": "memory-agent-workbench",
+  "monitoredPaths": ["server/", "src/api.ts", "src/types.ts"],
+  "lastSynced": {
+    "server/": "3f06b8badecfcbcf115bf79c88e1f2c43031497d",
+    "src/api.ts": "3f06b8badecfcbcf115bf79c88e1f2c43031497d",
+    "src/types.ts": "3f06b8badecfcbcf115bf79c88e1f2c43031497d"
+  },
+  "syncedAt": "2026-08-31T00:00:00Z",
+  "note": "由 api-doc-generator 首次全量生成时写入的基线；后续由 sync-api-tests 步骤 6 更新。"
+}
