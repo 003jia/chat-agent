@@ -77,6 +77,11 @@ async function requestText(url: string): Promise<string> {
 }
 
 export const api = {
+  login: (username: string, password: string) =>
+    request<{ ok: true; token: string }>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password })
+    }),
   getRoles: () => request<RoleStore>("/api/roles"),
   createRole: (role: Partial<AgentConfig>) =>
     request<RoleStore>("/api/roles", {
@@ -196,7 +201,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ query, limit })
     }),
-  listTools: () => request<{ tools: AgentTool[] }>("/api/tools"),
+  listTools: () => request<{ tools: AgentTool[]; workspaceRoot?: string }>("/api/tools"),
   listTasks: (conversationId = "default", limit = 30) =>
     request<{ tasks: AgentTask[] }>(`/api/tasks?conversationId=${encodeURIComponent(conversationId)}&limit=${limit}`),
   getTask: (taskId: string) => request<AgentTask>(`/api/tasks/${taskId}`),
@@ -204,11 +209,20 @@ export const api = {
     objective: string;
     conversationId: string;
     input: Record<string, unknown>;
-    approved?: boolean;
   }) =>
     request<AgentTask>(`/api/tools/${encodeURIComponent(toolId)}/execute`, {
       method: "POST",
       body: JSON.stringify(options)
+    }),
+  approveTask: (taskId: string) =>
+    request<AgentTask>(`/api/tasks/${encodeURIComponent(taskId)}/approve`, {
+      method: "POST",
+      body: JSON.stringify({})
+    }),
+  cancelTask: (taskId: string) =>
+    request<AgentTask>(`/api/tasks/${encodeURIComponent(taskId)}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({})
     }),
   getMemory: () => request<MemoryState>("/api/memory"),
   commitMemory: (items: MemoryItem[]) =>

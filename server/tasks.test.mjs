@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { completeToolTask, createToolTask, failToolTask } from "./tasks.mjs";
+import { approveToolTask, cancelToolTask, completeToolTask, createToolTask, failToolTask } from "./tasks.mjs";
 
 const readTool = {
   id: "memory.search",
@@ -44,5 +44,25 @@ describe("tool tasks", () => {
 
     expect(task.status).toBe("waiting_approval");
     expect(task.steps[0].status).toBe("waiting_approval");
+
+    const approved = approveToolTask(task, "2026-08-13T00:00:00.000Z");
+    expect(approved.id).toBe(task.id);
+    expect(approved.status).toBe("running");
+    expect(approved.steps[0].status).toBe("running");
+    expect(approved.steps[0].startedAt).toBe("2026-08-13T00:00:00.000Z");
+    expect(cancelToolTask(approved)).toBeNull();
+  });
+
+  it("cancels only tasks that are waiting for approval", () => {
+    const task = createToolTask({
+      objective: "写入文件",
+      toolInput: { path: "report.md" }
+    }, { ...readTool, id: "file.write", permission: "write" });
+
+    const cancelled = cancelToolTask(task, "2026-08-13T00:00:00.000Z");
+    expect(cancelled.id).toBe(task.id);
+    expect(cancelled.status).toBe("cancelled");
+    expect(cancelled.steps[0].status).toBe("cancelled");
+    expect(approveToolTask(cancelled)).toBeNull();
   });
 });

@@ -1,5 +1,6 @@
 node_modules
 dist
+release
 .DS_Store
 *.log
 .env
@@ -8,3 +9,8 @@ dist
 data/
 .workbuddy/
 qa-screenshots/
+.e2e-tmp/
+.e2e-results/
+.e2e-browsers/
+.npm-cache/
+playwright-report/

@@ -39,6 +39,30 @@ export function completeToolTask(task, result, now = new Date().toISOString()) {
   });
 }
 
+export function approveToolTask(task, now = new Date().toISOString()) {
+  if (task?.status !== "waiting_approval") return null;
+  return normalizeTask({
+    ...task,
+    status: "running",
+    updatedAt: now,
+    steps: task.steps.map((step, index) => index === task.steps.length - 1
+      ? { ...step, status: "running", startedAt: now }
+      : step)
+  });
+}
+
+export function cancelToolTask(task, now = new Date().toISOString()) {
+  if (task?.status !== "waiting_approval") return null;
+  return normalizeTask({
+    ...task,
+    status: "cancelled",
+    updatedAt: now,
+    steps: task.steps.map((step, index) => index === task.steps.length - 1
+      ? { ...step, status: "cancelled", completedAt: now }
+      : step)
+  });
+}
+
 export function failToolTask(task, error, now = new Date().toISOString()) {
   const failure = {
     code: String(error?.code || "TOOL_EXECUTION_ERROR"),

@@ -1,0 +1,17 @@
+{
+  "name": "dsh-codex-provider",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "index.mjs",
+  "description": "DeepSeek Harness 插件：把模型调用路由到你本机 Codex（ChatGPT 桌面版内置 CLI）账号，使用 GPT-5.6 系列模型（gpt-5.6-sol 等），无需独立 API Key。通过 OpenAI 兼容本地桥接实现，DSH 启动时自动拉起桥接、退出时自动清理。",
+  "dsh": {
+    "bundle": {
+      "patch": "cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "bridge": "node bridge.mjs",
+    "verify": "node verify.mjs"
+  }
+}

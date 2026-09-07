@@ -1,0 +1,22 @@
+{
+  "name": "dsh-custom-wallpaper",
+  "description": "自定义壁纸：在设置里为 Web UI 设置一张自定义背景壁纸（URL 或本地图片），支持遮罩强度与模糊调节。",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "license": "MIT"
+}

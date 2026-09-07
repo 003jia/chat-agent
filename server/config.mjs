@@ -119,6 +119,16 @@ export const defaultModelConfig = {
       contextLength: DEFAULT_CONTEXT_LENGTH,
       status: "missing"
     },
+    codex: {
+      id: "codex",
+      label: "Codex GPT-5.6",
+      baseURL: "http://127.0.0.1:8899/v1",
+      apiKey: "",
+      model: "gpt-5.6-sol",
+      embeddingModel: "",
+      contextLength: 272000,
+      status: "missing"
+    },
     anthropic: {
       id: "anthropic",
       label: "Anthropic",
@@ -136,6 +146,7 @@ export const apiKeyEnvByProvider = {
   "openai-compatible": "MEMORY_AGENT_API_KEY_OPENAI_COMPATIBLE",
   openai: "MEMORY_AGENT_API_KEY_OPENAI",
   deepseek: "MEMORY_AGENT_API_KEY_DEEPSEEK",
+  codex: "MEMORY_AGENT_API_KEY_CODEX",
   anthropic: "MEMORY_AGENT_API_KEY_ANTHROPIC"
 };
 
@@ -158,6 +169,25 @@ export function normalizeModelConfig(config, env = process.env) {
     selectedProvider: providers[selectedProvider] ? selectedProvider : defaultModelConfig.selectedProvider,
     providers
   };
+}
+
+export function validateProviderBaseURL(value) {
+  const raw = String(value || "").trim();
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw apiError(400, "PROVIDER_URL_INVALID", "模型接口地址必须是有效 URL。");
+  }
+  if (parsed.username || parsed.password) {
+    throw apiError(400, "PROVIDER_URL_INVALID", "模型接口地址不能包含账号或密码。");
+  }
+  const loopbackHosts = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+  if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && loopbackHosts.has(parsed.hostname))) {
+    throw apiError(400, "PROVIDER_URL_INSECURE", "模型接口仅允许 HTTPS，或本机 HTTP 地址。");
+  }
+  parsed.hash = "";
+  return parsed.toString().replace(/\/+$/, "");
 }
 
 export function hasProviderEnvApiKey(providerId, env = process.env) {
@@ -211,5 +241,5 @@ export function providerFromConfig(modelConfig) {
   if (!provider.model) {
     throw apiError(400, "CONFIG_ERROR", "当前供应商缺少模型名。");
   }
-  return provider;
+  return { ...provider, baseURL: validateProviderBaseURL(provider.baseURL) };
 }

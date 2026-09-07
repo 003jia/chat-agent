@@ -10,6 +10,20 @@
 - 每次工具调用都会形成独立任务记录，保存目标、输入、状态、结果摘要和错误。
 - 工具输出属于任务证据，不会直接写入长期记忆；任务完成后再提炼稳定事实和可复用经验。
 
+## 未来目标与优先方向
+
+项目未来定位为**本地优先、权限受控、过程可审计、模型可替换的桌面 Agent 工作台**。后续优先级如下：
+
+1. 建立统一 `AgentRuntime`，完成有界多步骤任务循环。
+2. 将任务、审批和审计升级为统一 Pre/Post/Stop Hook 与事件协议。
+3. 保持模型无直接副作用权限，完善工作区边界、沙箱、超时、取消和失败恢复。
+4. 分离长期记忆与任务知识，逐步以 SQLite 承载权威数据和版本迁移。
+5. 建立受控 Skill/MCP 扩展体系，所有能力继续继承权限和审计。
+6. 完成 Electron、本地服务、Codex Bridge、Keychain、签名与公证的桌面交付闭环。
+7. 单 Agent 稳定后，再推进专家团和多 Agent 真实调度。
+
+完整目标、非目标、阶段里程碑和验收标准见 [`docs/未来目标与架构路线图.md`](docs/未来目标与架构路线图.md)。
+
 ## 产品差异化：可控的长期记忆
 
 Memory Agent Workbench 采用**先审后写**机制：后台抽取出的每一条候选记忆都会进入候选区，用户可以逐条接受、编辑、拒绝或禁用。只有被明确确认的条目才会进入长期记忆索引，并参与后续对话召回。
@@ -33,6 +47,9 @@ Memory Agent Workbench 采用**先审后写**机制：后台抽取出的每一�
 - 联网搜索：搜索结果会作为不可信上下文注入，并带 prompt 注入防护。
 - 受控工具运行台：提供统一工具描述、JSON 输入 Schema、权限级别和执行接口。
 - 可审计任务记录：工具执行按会话保存，可在工具抽屉查看目标、结果、状态和时间。
+- 本地工作区：受限目录（默认 `data/workspace`）内的代码与文件操作，支持目录浏览、读取、代码检索、写入与精确补丁，写入类操作需人工确认。
+- 办公文档：按标题/摘要/章节结构生成 Markdown 文档，或生成可打开的 Word（.docx）文档，自动写入工作区。
+- 双工作区入口：工具台分为 `Work` 与 `编程`；`Work` 集中搜索、记忆和办公文档，`编程` 集中本地代码读取、检索、写入与补丁。
 - 首批工具：联网搜索和长期记忆检索，均为只读自动执行。
 - 长期记忆：候选先审核，确认后更新 `index.json`，追加 `raw/` 审计日志，并重新渲染 `memory.md`。
 - 记忆优化：中文友好检索、可选 Embedding 语义召回、常驻高优先级偏好、候选持久化、`add/update/disable/noop` 语义、逐条接受/编辑/拒绝、活跃记忆编辑/禁用/删除。
@@ -77,7 +94,27 @@ MEMORY_AGENT_API_KEY_DEEPSEEK
 MEMORY_AGENT_API_KEY_ANTHROPIC
 ```
 
+工具工作区默认位于 `data/workspace`，可通过环境变量指定其他目录（需为绝对路径）：
+
+```text
+MEMORY_AGENT_WORKSPACE_DIR=/path/to/your/workspace
+```
+
 如果在界面里填写 API Key，它会保存在本地 `data/config/models.json`。`data/` 已被 `.gitignore` 忽略，不会随正常 Git 提交流程上传。
+
+## Codex 插件（调用本机 Codex 的 GPT-5.6）
+
+内置供应商 `codex`：通过 `plugins/codex/` 目录下的本地桥接服务，复用你电脑上 Codex
+（ChatGPT 桌面版内置 CLI，登录态在 `~/.codex`）的账号，直接调用 GPT-5.6 系列模型
+（`gpt-5.6-sol` 等），无需单独申请 API Key。
+
+```bash
+npm run codex:install   # 注册供应商（默认模型自动读 ~/.codex/config.toml）
+npm run codex:bridge    # 启动本地桥接服务 http://127.0.0.1:8899
+npm run dev             # 然后在模型切换器中选择 “Codex GPT-5.6”
+```
+
+详细说明见 [`plugins/codex/README.md`](plugins/codex/README.md)。
 
 ## 常用命令
 
@@ -96,6 +133,8 @@ data/config/roles.json
 data/config/models.json
 data/config/teams.json
 data/backgrounds/*                  # 角色自定义背景
+data/workspace/*                    # 本地工作区：代码、文件与办公文档产物
+data/audit/YYYY-MM-DD.ndjson         # 登录、审批、取消和工具执行审计（不记录正文）
 data/conversations/*.json
 data/tasks/*.json                   # 工具任务、执行步骤和结果摘要
 data/memory/raw/YYYY-MM-DD.md   # 审核通过后的 append-only 审计日志
@@ -114,6 +153,7 @@ data/memory/memory.md           # 由 index.json 中 active 记忆自动渲染�
   -> 服务端校验工具 ID、输入 Schema 和权限
   -> read 工具自动执行
   -> write / external 工具进入 waiting_approval
+  -> 用户按任务 ID 批准或取消；批准后同一任务进入 running
   -> 执行结果写入 data/tasks/<task-id>.json
   -> 前端执行时间线展示完成、失败或待确认状态
 ```
@@ -122,6 +162,13 @@ data/memory/memory.md           # 由 index.json 中 active 记忆自动渲染�
 
 - `web.search`：搜索公开网页，返回来源、链接和摘要。
 - `memory.search`：只读检索活跃长期记忆，不修改 `memory.md`。
+- `workspace.list` / `workspace.read` / `workspace.grep`：只读浏览、读取与检索工作区内的代码和文档。
+- `workspace.write` / `workspace.patch`：在工作区写入或精确补丁文件（写代码），需人工确认。
+- `office.document` / `office.docx`：生成 Markdown 或 Word 办公文档并写入工作区，需人工确认。
+
+所有文件类工具都被限制在 `MEMORY_AGENT_WORKSPACE_DIR`（默认 `data/workspace`）内，相对路径越界、绝对路径和符号链接逃逸都会被拒绝。写类工具执行前必须点击任务时间线中的“确认执行”；批准和取消都在原任务上流转，不会重复创建任务。
+
+模型供应商地址仅允许 HTTPS；为兼容 Ollama 等本地模型，也允许 `localhost`、`127.0.0.1` 和 `::1` 的 HTTP 地址。远程明文 HTTP 和 URL 内嵌账号密码会被拒绝。
 
 当前阶段先建立可靠的工具执行底座。模型自动选择工具、多步骤 Agent 循环、文件产物和专家团真实调度将在该协议上继续扩展。
 

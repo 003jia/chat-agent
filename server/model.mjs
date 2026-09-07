@@ -1,11 +1,12 @@
 import { apiError, classifyProviderError, mapModelError } from "./errors.mjs";
 import { fetchWithTimeout } from "./http.mjs";
 import { MODEL_MAX_TOKENS } from "./constants.mjs";
+import { validateProviderBaseURL } from "./config.mjs";
 
 export const MODEL_TIMEOUT_MS = 60000;
 
 function normalizeBaseURL(baseURL) {
-  return String(baseURL || "").replace(/\/+$/, "");
+  return validateProviderBaseURL(baseURL);
 }
 
 export async function callModel(provider, messages, temperature, options = {}) {

@@ -371,7 +371,7 @@
   overflow: hidden;
 }
 
-.chat-only-layout > .chat-panel {
+.chat-only-layout .chat-panel {
   flex: 1;
   min-height: 0;
   display: grid;
@@ -387,11 +387,11 @@
 }
 
 /* Override glass panel styles when inside companion layout */
-.chat-only-layout > .chat-panel .chat-header {
+.chat-only-layout .chat-panel .chat-header {
   display: none;
 }
 
-.chat-only-layout > .chat-panel .chat-scroll {
+.chat-only-layout .chat-panel .chat-scroll {
   grid-row: 1;
   padding: 20px 24px 16px;
   max-width: 656px;
@@ -399,7 +399,7 @@
   width: 100%;
 }
 
-.chat-only-layout > .chat-panel .composer-zone {
+.chat-only-layout .chat-panel .composer-zone {
   grid-row: 2;
   padding: 0 24px 20px;
   max-width: 656px;
@@ -407,7 +407,7 @@
   width: 100%;
 }
 
-.chat-only-layout > .chat-panel .composer {
+.chat-only-layout .chat-panel .composer {
   max-width: 100%;
   background: var(--companion-surface);
   box-shadow: var(--bubble-shadow);
@@ -1439,16 +1439,16 @@
     background-size: cover;
   }
 
-  .chat-only-layout > .chat-panel {
+  .chat-only-layout .chat-panel {
     max-width: 100%;
   }
 
-  .chat-only-layout > .chat-panel .chat-scroll {
+  .chat-only-layout .chat-panel .chat-scroll {
     padding: 16px 16px 12px;
     max-width: 100%;
   }
 
-  .chat-only-layout > .chat-panel .composer-zone {
+  .chat-only-layout .chat-panel .composer-zone {
     padding: 0 16px 16px;
     max-width: 100%;
   }
@@ -1688,7 +1688,7 @@
   box-shadow: 10px 0 32px rgba(42, 92, 170, 0.08);
 }
 
-.chat-only-layout > .chat-panel .composer {
+.chat-only-layout .chat-panel .composer {
   border: 1px solid rgba(255, 255, 255, 0.6);
   background: rgba(234, 245, 253, 0.62);
   backdrop-filter: blur(24px) saturate(1.25);
@@ -1703,16 +1703,24 @@
   background-size: cover;
 }
 
-/* 新建会话：加深蓝底 + 白字白图标（浅蓝底上白字看不清） */
+/* 新建会话：莱茵蓝渐变玻璃按钮，保持 CTA 突出且符合液态玻璃语言 */
+/* 背景 semi-transparent 以让 backdrop-filter 真正生效（原 var(--blue-grad) 不透明会使模糊失效） */
 .new-conversation-button {
-  color: #fff;
-  background: var(--accent-ink);
-  box-shadow: 0 8px 18px rgba(63, 127, 210, 0.28);
+  color: #1f2a45;
+  background: linear-gradient(135deg, rgba(217, 237, 253, 0.72) 0%, rgba(172, 224, 249, 0.72) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 10px 24px rgba(63, 127, 210, 0.22);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
 }
 
 .new-conversation-button:hover:not(:disabled) {
-  background: #3574c4;
-  box-shadow: 0 10px 22px rgba(63, 127, 210, 0.34);
+  background: linear-gradient(135deg, rgba(205, 231, 251, 0.82) 0%, rgba(158, 212, 247, 0.82) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 12px 28px rgba(63, 127, 210, 0.3);
 }
 
 /* —— 三栏布局：右侧记忆面板常驻（2026-08-06，对应设计稿 19:1）—— */
@@ -1776,4 +1784,607 @@
 
 .desktop-memory-column.collapsed {
   display: none;
+}
+
+/* ============================================================
+   液态玻璃一致性优化（2026-08-07）
+   目标：将残留实色/扁平元素统一为玻璃语言
+   ============================================================ */
+
+/* —— 侧边栏会话卡片 —— */
+.conversation-sidebar-list li.active {
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 3px 0 0 var(--accent-ink),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 4px 14px rgba(42, 92, 170, 0.08);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+}
+
+.conversation-sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 4px 14px rgba(42, 92, 170, 0.08);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+}
+
+.conversation-sidebar-roles button:hover,
+.conversation-sidebar-roles button.active {
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 4px 14px rgba(42, 92, 170, 0.08);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+}
+
+/* —— 消息气泡 —— */
+.bubble {
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 10px 28px rgba(42, 92, 170, 0.1);
+}
+
+.message-row.user .bubble {
+  background: rgba(222, 236, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.88);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 10px 28px rgba(63, 127, 210, 0.14);
+}
+
+/* —— 记忆提示条 —— */
+.memory-toast {
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(247, 251, 255, 0.62);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 10px 24px rgba(42, 92, 170, 0.1);
+}
+
+/* —— 快捷操作按钮 active —— */
+.quick-actions button.active {
+  color: var(--blue-ink);
+  background: rgba(222, 236, 255, 0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(63, 127, 210, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 6px 18px rgba(63, 127, 210, 0.12);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+}
+
+/* —— 气泡内代码块：暗色玻璃 —— */
+.bubble.markdown-body pre {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(17, 24, 39, 0.85);
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 8px 20px rgba(0, 0, 0, 0.18);
+}
+
+/* —— 输入框玻璃再增强 —— */
+.chat-only-layout .chat-panel .composer {
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(26px) saturate(1.3);
+  -webkit-backdrop-filter: blur(26px) saturate(1.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 16px 44px rgba(63, 127, 210, 0.14);
+}
+
+/* —— 右侧记忆面板按钮/卡片统一 —— */
+.desktop-memory-column .drawer-actions button {
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 6px 16px rgba(42, 92, 170, 0.08);
+}
+
+.desktop-memory-column .result-row {
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  background: rgba(255, 255, 255, 0.48);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 6px 16px rgba(42, 92, 170, 0.06);
+}
+
+/* —— 抽屉面板：避免纯白实底 —— */
+.drawer-panel {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(28px) saturate(1.25);
+  -webkit-backdrop-filter: blur(28px) saturate(1.25);
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.8),
+    -20px 0 50px rgba(45, 66, 100, 0.14);
+}
+
+.drawer-panel.left {
+  box-shadow:
+    inset -1px 0 0 rgba(255, 255, 255, 0.8),
+    20px 0 50px rgba(45, 66, 100, 0.14);
+}
+
+/* —— 记忆面板代码预览：暗色玻璃 —— */
+.drawer-body .markdown-preview,
+.desktop-memory-column .markdown-preview {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(17, 24, 39, 0.78);
+  color: #e2e8f0;
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* —— 设置表单控件玻璃化 —— */
+.persona-editor .field input,
+.persona-editor .field textarea,
+.team-toolbar select,
+.team-enabled {
+  border-color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px) saturate(1.15);
+  -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 4px 12px rgba(42, 92, 170, 0.06);
+}
+
+/* —— 移动端聊天容器玻璃化 —— */
+.phone-frame {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(26px) saturate(1.25);
+  -webkit-backdrop-filter: blur(26px) saturate(1.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 18px 44px rgba(42, 92, 170, 0.12);
+}
+
+.mobile-composer {
+  background: rgba(248, 252, 255, 0.62);
+  backdrop-filter: blur(26px) saturate(1.3);
+  -webkit-backdrop-filter: blur(26px) saturate(1.3);
+}
+
+.mobile-note {
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(249, 252, 255, 0.58);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 10px 24px rgba(42, 92, 170, 0.08);
+}
+
+/* ============================================================
+   液态玻璃一致性收尾（2026-08-07 第二轮）
+   针对首轮优化后仍残留的实色/扁平元素统一玻璃语言
+   ============================================================ */
+
+/* —— 玻璃控件公共变量：消除重复，统一调参 ——
+   以下选择器引用这组变量；需整体调整玻璃质感时只改此处 */
+[data-companion] {
+  --glass-control-bg: rgba(255, 255, 255, 0.48);
+  --glass-control-border: rgba(255, 255, 255, 0.55);
+  --glass-control-blur: blur(12px) saturate(1.2);
+  --glass-control-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 4px 12px rgba(42, 92, 170, 0.06);
+  --glass-control-bg-hover: rgba(255, 255, 255, 0.68);
+}
+
+/* —— 移动端头部按钮 —— */
+.mobile-actions > button,
+.settings-header button {
+  border: 1px solid var(--glass-control-border);
+  background: var(--glass-control-bg);
+  backdrop-filter: var(--glass-control-blur);
+  -webkit-backdrop-filter: var(--glass-control-blur);
+  box-shadow: var(--glass-control-shadow);
+}
+
+.mobile-actions > button:hover,
+.settings-header button:hover {
+  background: var(--glass-control-bg-hover);
+  color: var(--accent-ink);
+}
+
+/* —— 移动端设置卡片内按钮 —— */
+.mobile-buttons button {
+  border: 1px solid var(--glass-control-border);
+  background: var(--glass-control-bg);
+  backdrop-filter: var(--glass-control-blur);
+  -webkit-backdrop-filter: var(--glass-control-blur);
+  box-shadow: var(--glass-control-shadow);
+}
+
+.mobile-buttons button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 8px 20px rgba(42, 92, 170, 0.12);
+}
+
+.mobile-buttons button.blue {
+  color: #1f2a45;
+  background: var(--blue-grad);
+  border-color: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 10px 22px rgba(63, 127, 210, 0.22);
+}
+
+/* —— 设置行图标 —— */
+.mobile-setting-row > span {
+  border: 1px solid var(--glass-control-border);
+  background: var(--glass-control-bg);
+  backdrop-filter: var(--glass-control-blur);
+  -webkit-backdrop-filter: var(--glass-control-blur);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* —— API 条带图标 —— */
+.api-strip > svg {
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: var(--blue-grad);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 6px 16px rgba(63, 127, 210, 0.18);
+}
+
+/* —— 桌面侧边栏搜索过滤 —— */
+.conversation-filter {
+  border: 1px solid var(--glass-control-border);
+  background: var(--glass-control-bg);
+  backdrop-filter: var(--glass-control-blur);
+  -webkit-backdrop-filter: var(--glass-control-blur);
+  box-shadow: var(--glass-control-shadow);
+}
+
+/* —— 侧边栏底部按钮 —— */
+.conversation-sidebar-footer button {
+  border: 1px solid var(--glass-control-border);
+  background: var(--glass-control-bg);
+  backdrop-filter: var(--glass-control-blur);
+  -webkit-backdrop-filter: var(--glass-control-blur);
+  box-shadow: var(--glass-control-shadow);
+}
+
+.conversation-sidebar-footer button:hover {
+  background: var(--glass-control-bg-hover);
+}
+
+/* —— 搜索结果按钮 —— */
+.search-result-button {
+  border: 1px solid var(--glass-control-border);
+  background: var(--glass-control-bg);
+  backdrop-filter: var(--glass-control-blur);
+  -webkit-backdrop-filter: var(--glass-control-blur);
+  box-shadow: var(--glass-control-shadow);
+}
+
+/* —— 模型选择器 —— */
+.composer-model-select {
+  border: 1px solid var(--glass-control-border);
+  background: var(--glass-control-bg);
+  backdrop-filter: var(--glass-control-blur);
+  -webkit-backdrop-filter: var(--glass-control-blur);
+  box-shadow: var(--glass-control-shadow);
+}
+
+/* —— 上下文用量条：细条用更弱玻璃 —— */
+.context-usage i {
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(8px) saturate(1.1);
+  -webkit-backdrop-filter: blur(8px) saturate(1.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* —— 快捷提示按钮 —— */
+.welcome-quick-prompts button,
+.role-quick-prompts button {
+  border: 1px solid var(--glass-control-border);
+  background: var(--glass-control-bg);
+  backdrop-filter: var(--glass-control-blur);
+  -webkit-backdrop-filter: var(--glass-control-blur);
+  box-shadow: var(--glass-control-shadow);
+}
+
+.welcome-quick-prompts button:hover,
+.role-quick-prompts button:hover {
+  background: var(--glass-control-bg-hover);
+}
+
+/* —— 专家团：底部操作栏 —— */
+.team-actions {
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.85) 68%, transparent);
+}
+
+/* —— 专家团：卡片/流程/开关 —— */
+.team-role-card,
+.team-flow,
+.team-enabled,
+.team-toolbar select,
+.team-icon-button,
+.lead-button,
+.join-indicator,
+.team-flow-members span {
+  border: 1px solid var(--glass-control-border);
+  background: var(--glass-control-bg);
+  backdrop-filter: var(--glass-control-blur);
+  -webkit-backdrop-filter: var(--glass-control-blur);
+  box-shadow: var(--glass-control-shadow);
+}
+
+.team-role-card.joined {
+  border-color: color-mix(in srgb, var(--accent-ink) 35%, white);
+  background: rgba(222, 236, 255, 0.55);
+  box-shadow:
+    inset 3px 0 0 var(--accent-ink),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 6px 16px rgba(42, 92, 170, 0.1);
+}
+
+.lead-button.active,
+.join-indicator.on,
+.team-flow-lead,
+.team-flow-members span {
+  border-color: color-mix(in srgb, var(--accent-ink) 30%, white);
+  background: rgba(222, 236, 255, 0.58);
+}
+
+.team-icon-button {
+  color: var(--accent-ink);
+}
+
+.team-actions button {
+  color: #1f2a45;
+  background: linear-gradient(135deg, rgba(217, 237, 253, 0.72) 0%, rgba(172, 224, 249, 0.72) 100%);
+  border-color: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 10px 22px rgba(63, 127, 210, 0.22);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+}
+
+.team-actions button.danger {
+  color: #c2414d;
+  background: rgba(255, 241, 243, 0.72);
+  border-color: rgba(255, 255, 255, 0.65);
+  backdrop-filter: var(--glass-control-blur);
+  -webkit-backdrop-filter: var(--glass-control-blur);
+  box-shadow: var(--glass-control-shadow);
+}
+
+/* —— 表情/颜色选择器按钮 —— */
+.emoji-picker button,
+.color-swatch {
+  border: 1px solid var(--glass-control-border);
+  background: var(--glass-control-bg);
+  backdrop-filter: var(--glass-control-blur);
+  -webkit-backdrop-filter: var(--glass-control-blur);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 4px 10px rgba(42, 92, 170, 0.06);
+}
+
+.emoji-picker button:hover {
+  background: rgba(222, 236, 255, 0.62);
+}
+
+/* —— 通用图标按钮玻璃化 —— */
+.icon-button {
+  border: 1px solid var(--glass-control-border);
+  background: var(--glass-control-bg);
+  backdrop-filter: var(--glass-control-blur);
+  -webkit-backdrop-filter: var(--glass-control-blur);
+  box-shadow: var(--glass-control-shadow);
+}
+
+.icon-button:hover {
+  background: var(--glass-control-bg-hover);
+  color: var(--accent-ink);
+}
+
+/* ============================================================
+   液态玻璃细节打磨（2026-08-07 第三轮）
+   修复：输入框完整椭圆胶囊、点击输入框出现白框、输入白底、
+        消息区白色圆角边框等残留白边
+   ============================================================ */
+
+/* —— 消息区：去除包裹消息的白色圆角边框，回归通透玻璃 —— */
+.chat-only-layout .chat-panel .chat-scroll {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* —— 底部输入区：清除残留边框 —— */
+.chat-only-layout .chat-panel .composer-zone {
+  border: 0;
+}
+
+/* —— 输入框：完整椭圆胶囊 —— */
+.chat-only-layout .chat-panel .composer {
+  height: 64px;
+  border-radius: 999px;
+  padding: 0 8px 0 22px;
+}
+
+/* —— 输入框内文本输入：透明底，避免白块 —— */
+.composer input,
+.composer.mobile input {
+  background: transparent;
+  border: 0;
+}
+
+/* 点击输入框时移除系统 focus 描边，杜绝白框/蓝框 */
+.composer input:focus,
+.composer input:focus-visible,
+.composer textarea:focus,
+.composer textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* —— 输入聚焦时玻璃柔光高亮，替代生硬描边 —— */
+.chat-only-layout .chat-panel .composer:focus-within {
+  border-color: rgba(148, 197, 245, 0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 16px 44px rgba(63, 127, 210, 0.2),
+    0 0 0 4px rgba(63, 127, 210, 0.14);
+}
+
+/* —— 移动端输入框同样胶囊化 —— */
+.composer.mobile {
+  border-radius: 999px;
+}
+
+/* —— 气泡白边柔和化 —— */
+.bubble {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.message-row.user .bubble {
+  border-color: rgba(255, 255, 255, 0.62);
+}
+
+/* —— 记忆提示条白边柔和化 —— */
+.memory-toast {
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+/* —— 侧边栏与主区之间的白色分割线弱化 —— */
+.desktop-conversation-sidebar {
+  border-right-color: rgba(255, 255, 255, 0.55);
+}
+
+/* ============================================================
+   登录面板玻璃化（2026-08-07）
+   账号密码登录界面，统一液态玻璃语言，补齐按钮样式
+   ============================================================ */
+.access-setup-panel {
+  border-radius: 22px;
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.66);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 24px 70px rgba(36, 66, 120, 0.14);
+  backdrop-filter: blur(28px) saturate(1.2);
+  -webkit-backdrop-filter: blur(28px) saturate(1.2);
+}
+
+.access-setup-panel input {
+  border-color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+}
+
+.access-setup-actions .primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 12px;
+  color: #1f2a45;
+  background: var(--blue-grad);
+  font-weight: 700;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 10px 24px rgba(63, 127, 210, 0.22);
+}
+
+.access-setup-actions .primary-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #cde7fb 0%, #9ed4f7 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 12px 28px rgba(63, 127, 210, 0.3);
+}
+
+.access-setup-actions .icon-text-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+  border: 1px solid var(--glass-control-border);
+  border-radius: 12px;
+  color: #5f6f83;
+  background: var(--glass-control-bg);
+  backdrop-filter: var(--glass-control-blur);
+  -webkit-backdrop-filter: var(--glass-control-blur);
+  box-shadow: var(--glass-control-shadow);
+}
+
+/* ============================================================
+   工具运行台：工作区/办公工具表单玻璃化（2026-08-12）
+   ============================================================ */
+.tool-form-field input,
+.tool-form-field textarea {
+  border-color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px) saturate(1.15);
+  -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 4px 12px rgba(42, 92, 170, 0.06);
+}
+
+.tool-form {
+  border-color: rgba(158, 188, 255, 0.7);
+  background: rgba(237, 244, 255, 0.55);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+
+.tool-form-cancel {
+  border-color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.registered-tools button.selected {
+  border-color: rgba(116, 158, 242, 0.85);
+  background: rgba(242, 247, 255, 0.85);
+}
+
+.tool-category-tabs {
+  border-color: rgba(255, 255, 255, 0.58);
+  background: rgba(231, 239, 250, 0.42);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+
+.tool-category-tabs > button.active {
+  border-color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.68);
 }

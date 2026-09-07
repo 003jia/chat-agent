@@ -1,6 +1,17 @@
 import crypto from "node:crypto";
 import { apiError } from "./errors.mjs";
 
+export const ADMIN_USERNAME_DEFAULT = "admin";
+export const ADMIN_PASSWORD_DEFAULT = "admin123";
+
+// 账号密码校验：账号/密码通过 env 配置，默认 admin / admin123
+export function verifyAdminCredentials({ username, password } = {}, env = process.env) {
+  const expectedUsername = String(env.MEMORY_AGENT_ADMIN_USERNAME || ADMIN_USERNAME_DEFAULT);
+  const expectedPassword = String(env.MEMORY_AGENT_ADMIN_PASSWORD || ADMIN_PASSWORD_DEFAULT);
+  return typeof username === "string" && typeof password === "string" &&
+    username === expectedUsername && password === expectedPassword;
+}
+
 export function requireAdminToken(env = process.env) {
   return (request, _response, next) => {
     const expected = String(env.MEMORY_AGENT_ADMIN_TOKEN || "");

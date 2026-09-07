@@ -77,6 +77,57 @@ describe("createApp API smoke", () => {
     expect(commit.json.code).toBe("AUTH_REQUIRED");
   });
 
+  it("logs in with default admin credentials and returns the admin token", async () => {
+    const server = await createTestApp();
+    const response = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/auth/login",
+      body: { username: "admin", password: "admin123" }
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.json).toEqual({ ok: true, token: "secret" });
+  });
+
+  it("rejects login with wrong credentials and honors username/password env overrides", async () => {
+    const server = await createTestApp({
+      env: {
+        MEMORY_AGENT_ADMIN_TOKEN: "secret",
+        MEMORY_AGENT_ADMIN_USERNAME: "owner",
+        MEMORY_AGENT_ADMIN_PASSWORD: "p@ss"
+      }
+    });
+    const wrong = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/auth/login",
+      body: { username: "admin", password: "admin123" }
+    });
+    const right = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/auth/login",
+      body: { username: "owner", password: "p@ss" }
+    });
+
+    expect(wrong.status).toBe(401);
+    expect(wrong.json.code).toBe("AUTH_FAILED");
+    expect(right.status).toBe(200);
+    expect(right.json.token).toBe("secret");
+  });
+
+  it("returns 503 when login is attempted without a configured admin token", async () => {
+    const server = await createTestApp({
+      env: { MEMORY_AGENT_ADMIN_USERNAME: "admin", MEMORY_AGENT_ADMIN_PASSWORD: "admin123" }
+    });
+    const response = await invokeApp(server.app, {
+      method: "POST",
+      url: "/api/auth/login",
+      body: { username: "admin", password: "admin123" }
+    });
+
+    expect(response.status).toBe(503);
+    expect(response.json.code).toBe("AUTH_NOT_CONFIGURED");
+  });
+
   it("rejects overlong chat messages before model calls", async () => {
     const server = await createTestApp();
     const response = await invokeApp(server.app, {

@@ -32,6 +32,7 @@ export function useWorkbenchState() {
   const [webSearchState, setWebSearchState] = useState<WebSearchResponse | null>(null);
   const [tools, setTools] = useState<AgentTool[]>([]);
   const [tasks, setTasks] = useState<AgentTask[]>([]);
+  const [workspaceRoot, setWorkspaceRoot] = useState("");
   const [busyAction, setBusyAction] = useState<BusyAction>(null);
   const [statusKey, setStatusKey] = useState(0);
   const [memoryFeedbackKey, setMemoryFeedbackKey] = useState(0);
@@ -64,6 +65,7 @@ export function useWorkbenchState() {
         setConversations(conversationList.conversations);
         setMemoryState(memory);
         setTools(toolList.tools);
+        setWorkspaceRoot(toolList.workspaceRoot || "");
         setTasks(taskList.tasks);
       } catch (bootError) {
         setError(errorMessage(bootError));
@@ -735,7 +737,9 @@ export function useWorkbenchState() {
       }
       showStatus(task.status === "completed"
         ? step?.result?.summary || (agentConfig?.language === "en" ? "Tool completed." : "工具执行完成。")
-        : step?.error?.message || (agentConfig?.language === "en" ? "Tool execution failed." : "工具执行失败。"));
+        : task.status === "waiting_approval"
+          ? (agentConfig?.language === "en" ? "Task awaits your approval." : "任务已创建，等待确认执行。")
+          : step?.error?.message || (agentConfig?.language === "en" ? "Tool execution failed." : "工具执行失败。"));
       return task;
     } catch (toolError) {
       setError(errorMessage(toolError));
@@ -744,6 +748,35 @@ export function useWorkbenchState() {
       setSaving(false);
       setBusyAction(null);
     }
+  }
+
+  async function updateTask(action: "approve" | "cancel", taskId: string) {
+    setSaving(true);
+    setBusyAction("tool-run");
+    setError("");
+    try {
+      const task = action === "approve" ? await api.approveTask(taskId) : await api.cancelTask(taskId);
+      setTasks((current) => [task, ...current.filter((item) => item.id !== task.id)]);
+      const step = task.steps[task.steps.length - 1];
+      showStatus(step?.result?.summary || step?.error?.message || (action === "approve"
+        ? (agentConfig?.language === "en" ? "Task approved." : "任务已批准执行。")
+        : (agentConfig?.language === "en" ? "Task cancelled." : "任务已取消。")));
+      return task;
+    } catch (taskError) {
+      setError(errorMessage(taskError));
+      return null;
+    } finally {
+      setSaving(false);
+      setBusyAction(null);
+    }
+  }
+
+  async function approveTask(taskId: string) {
+    return await updateTask("approve", taskId);
+  }
+
+  async function cancelTask(taskId: string) {
+    return await updateTask("cancel", taskId);
   }
 
   function showStatus(message: string) {
@@ -944,6 +977,7 @@ export function useWorkbenchState() {
     webSearchState,
     tools,
     tasks,
+    workspaceRoot,
     busyAction,
     statusKey,
     memoryFeedbackKey,
@@ -971,6 +1005,8 @@ export function useWorkbenchState() {
     organizeMemory,
     runWebSearch,
     runTool,
+    approveTask,
+    cancelTask,
     setMobileView,
     openPanel,
     closePanel,

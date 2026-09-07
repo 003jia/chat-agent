@@ -1,7 +1,7 @@
 export type MemoryLevel = "high" | "medium" | "low";
 export type MemoryStatus = "active" | "candidate" | "disabled";
 export type ChatRole = "user" | "assistant" | "system";
-export type ProviderId = "openai-compatible" | "openai" | "deepseek" | "anthropic";
+export type ProviderId = "openai-compatible" | "openai" | "deepseek" | "codex" | "anthropic";
 
 export interface AgentConfig {
   id: string;
@@ -163,12 +163,14 @@ export interface WebSearchResponse {
 }
 
 export type ToolPermission = "read" | "write" | "external";
+export type ToolCategory = "work" | "coding";
 export type TaskStatus = "waiting_approval" | "running" | "completed" | "failed" | "cancelled";
 
 export interface AgentTool {
   id: string;
   name: string;
   description: string;
+  category: ToolCategory;
   permission: ToolPermission;
   inputSchema: {
     type: "object";
@@ -180,6 +182,7 @@ export interface AgentTool {
       maxLength?: number;
       minimum?: number;
       maximum?: number;
+      preserveWhitespace?: boolean;
     }>;
   };
 }

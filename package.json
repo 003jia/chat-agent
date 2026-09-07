@@ -4,15 +4,27 @@
   "private": true,
   "license": "MIT",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "vite --host 127.0.0.1",
     "dev:server": "node server/index.mjs",
     "build": "tsc && vite build",
     "test": "vitest run",
+    "test:e2e:chat": "node scripts/run-and-archive.mjs chat",
+    "test:e2e:login": "node scripts/run-and-archive.mjs login",
+    "test:e2e:summary": "node scripts/run-and-archive.mjs summary",
     "qa:screenshots": "node scripts/capture-screenshots.mjs",
+    "codex:bridge": "node plugins/codex/bridge.mjs",
+    "codex:install": "node plugins/codex/install.mjs",
+    "codex:dev": "concurrently -k -s first \"npm run codex:bridge\" \"npm run dev\"",
+    "codex:check": "node plugins/codex/check.mjs",
     "preview": "vite preview --host 127.0.0.1",
-    "start": "node server/index.mjs"
+    "start": "node server/index.mjs",
+    "electron:dev": "MEMORY_AGENT_ADMIN_TOKEN=dev-token concurrently -k -s first \"MEMORY_AGENT_ADMIN_TOKEN=dev-token npm run dev:server\" \"npm run dev:client\" \"wait-on tcp:127.0.0.1:5173 && MEMORY_AGENT_ADMIN_TOKEN=dev-token electron .\"",
+    "electron:start": "npm run build && electron .",
+    "electron:pack": "npm run build && electron-builder --dir",
+    "electron:dist": "npm run build && electron-builder"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",
@@ -29,10 +41,49 @@
     "vite": "^7.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "electron": "^43.3.0",
+    "electron-builder": "^26.15.3",
     "playwright": "^1.61.1",
     "typescript": "^5.8.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wait-on": "^9.1.0"
+  },
+  "build": {
+    "appId": "com.memoryagent.workbench",
+    "productName": "Memory Agent",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "server/**",
+      "electron/**",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "server/**"
+    ],
+    "extraResources": [
+      {
+        "from": "dist",
+        "to": "dist"
+      }
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }

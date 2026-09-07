@@ -31,6 +31,7 @@ export interface WorkbenchProps {
   webSearchState: WebSearchResponse | null;
   tools: AgentTool[];
   tasks: AgentTask[];
+  workspaceRoot: string;
   busyAction: BusyAction;
   statusKey: number;
   memoryFeedbackKey: number;
@@ -58,6 +59,8 @@ export interface WorkbenchProps {
   organizeMemory: () => Promise<void>;
   runWebSearch: (query: string) => Promise<WebSearchResponse | null>;
   runTool: (toolId: string, objective: string, input: Record<string, unknown>) => Promise<AgentTask | null>;
+  approveTask: (taskId: string) => Promise<AgentTask | null>;
+  cancelTask: (taskId: string) => Promise<AgentTask | null>;
   setMobileView: (view: "chat" | "settings") => void;
   openPanel: (panel: Exclude<ActivePanel, null>, message?: string) => void;
   closePanel: () => void;

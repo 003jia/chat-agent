@@ -1,0 +1,7 @@
+# dsh-custom-wallpaper bundle patch: inserts its plugin row into the web
+# profile roster. The row mounts the host half (config routes + local image
+# serving) and the browser half (the settings card + wallpaper painting,
+# via the dsh.client declaration in package.json).
+- insert:
+    - id: custom-wallpaper
+      name: 'dsh-custom-wallpaper'

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createApiKeyPreview, DEFAULT_CONTEXT_LENGTH, defaultAgentConfig, defaultRoleStore, EXPERT_TEAM_AUTHOR_ROLE_ID, maskModelConfig, normalizeModelConfig, normalizeRoleStore, stripRuntimeModelConfig } from "./config.mjs";
+import { createApiKeyPreview, DEFAULT_CONTEXT_LENGTH, defaultAgentConfig, defaultRoleStore, EXPERT_TEAM_AUTHOR_ROLE_ID, maskModelConfig, normalizeModelConfig, normalizeRoleStore, stripRuntimeModelConfig, validateProviderBaseURL } from "./config.mjs";
 
 describe("normalizeModelConfig", () => {
   it("applies defaults and clamps context length", () => {
@@ -36,6 +36,20 @@ describe("normalizeModelConfig", () => {
 
     expect(config.providers.openai.apiKey).toBe("env-key");
     expect(config.providers.openai.apiKeySource).toBe("env");
+  });
+});
+
+describe("validateProviderBaseURL", () => {
+  it("allows HTTPS and loopback HTTP URLs", () => {
+    expect(validateProviderBaseURL("https://api.example.com/v1/")).toBe("https://api.example.com/v1");
+    expect(validateProviderBaseURL("http://127.0.0.1:11434/v1")).toBe("http://127.0.0.1:11434/v1");
+    expect(validateProviderBaseURL("http://localhost:11434/v1")).toBe("http://localhost:11434/v1");
+  });
+
+  it("rejects insecure remote URLs and embedded credentials", () => {
+    expect(() => validateProviderBaseURL("http://api.example.com/v1")).toThrowError(/仅允许 HTTPS/);
+    expect(() => validateProviderBaseURL("https://user:pass@example.com/v1")).toThrowError(/不能包含账号或密码/);
+    expect(() => validateProviderBaseURL("not-a-url")).toThrowError(/有效 URL/);
   });
 });
 
